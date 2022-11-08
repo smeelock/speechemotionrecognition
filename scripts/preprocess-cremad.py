@@ -69,4 +69,4 @@ if __name__ == "__main__":
     filenames, labels = get_cremad_filepaths_and_labels(source_dir=args.source)
 
     # Preprocess dataset
-    preprocess_cremad(filenames, destination_dir=args.destination)
+    preprocess_cremad(filenames, source_dir=args.source, destination_dir=args.destination)
