@@ -3,4 +3,5 @@ tqdm~=4.64.1
 pedalboard~=0.6.3
 datasets~=2.6.1
 torch~=1.12.1
+tensorflow~=2.11.0
 transformers~=4.24.0
