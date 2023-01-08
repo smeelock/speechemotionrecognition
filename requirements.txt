@@ -7,3 +7,4 @@ transformers~=4.24.0
 tensorflow-macos~=2.11.0
 tensorflow-metal~=0.7.0
 tensorflow-datasets~=4.8.1
+pydub~=0.25.1
