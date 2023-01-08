@@ -713,5 +713,8 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/jetbrains,python,macos,visualstudio
 
 # ===== Custom =====
-# Ignore raw data
+# Raw data
 data/raw
+
+# Trained models
+models/
