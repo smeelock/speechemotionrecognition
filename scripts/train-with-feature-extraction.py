@@ -48,7 +48,7 @@ def get_dataloaders():
         'train': dataset[0],
         'val': dataset[1],
     }
-    sampling_rate = dataset.features["audio"].sampling_rate
+    sampling_rate = info.features["audio"].sample_rate
     return dataloaders, sampling_rate
 
 
@@ -187,11 +187,12 @@ if __name__ == "__main__":
             params_to_update.append(param)
             print("\t", name)
 
-    optimizer_ft = optim.SGD(params_to_update, lr=LEARNING_RATE, MOMENTUM=MOMENTUM)
+    optimizer_ft = optim.SGD(params_to_update, lr=LEARNING_RATE, momentum=MOMENTUM)
     criterion = nn.CrossEntropyLoss()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Train model
+    model = model.to(device)
     model_ft, hist, best_acc = train(
         model,
         dataloaders,
@@ -210,5 +211,5 @@ if __name__ == "__main__":
         model="wavlm",
         experiment="fe",  # fe=feature extraction
         val_acc=best_acc
-    )
+    ).replace('.', '_')
     torch.save(model_ft, f"{MODELS_DIR}/{model_name}.pt")
