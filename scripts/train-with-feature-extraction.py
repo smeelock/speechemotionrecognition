@@ -212,4 +212,4 @@ if __name__ == "__main__":
         experiment="fe",  # fe=feature extraction
         val_acc=best_acc
     ).replace('.', '_')
-    torch.save(model_ft, f"{MODELS_DIR}/{model_name}.pt")
+    torch.save(model_ft.state_dict(), f"{MODELS_DIR}/{model_name}.pt")
