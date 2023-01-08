@@ -4,5 +4,6 @@ pedalboard~=0.6.3
 datasets~=2.6.1
 torch~=1.12.1
 transformers~=4.24.0
-tensorflow~=2.11.0
+tensorflow-macos~=2.11.0
+tensorflow-metal~=0.7.0
 tensorflow-datasets~=4.8.1
