@@ -1,6 +1,6 @@
 locals {
   project_name = "speechemotionrecognition"
-  project_id = "adroit-crow-376514"
+  project_id   = "adroit-crow-376514"
 }
 
 terraform {
@@ -22,7 +22,7 @@ resource "google_compute_instance" "default" {
   name         = "${local.project_name}-instance"
   machine_type = "e2-micro"
 
-  tags = ["dev"]
+  tags = ["tsinghua", "speechemotionrecognition"]
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-11"
@@ -36,10 +36,4 @@ resource "google_compute_instance" "default" {
       network_tier = "STANDARD"
     }
   }
-
-  metadata = {
-    foo = "bar"
-  }
-
-  metadata_startup_script = "echo hi > /test.txt"
 }
