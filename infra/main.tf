@@ -40,7 +40,7 @@ resource "google_compute_instance" "this" {
   tags = ["tsinghua", "speechemotionrecognition", local.username]
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = "ubuntu-os-pro-cloud/ubuntu-pro-2204-lts"
     }
 
   }
