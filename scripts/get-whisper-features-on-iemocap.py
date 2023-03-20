@@ -10,7 +10,7 @@ import torch
 import wandb
 from torch.utils.data import Subset
 from torchaudio.datasets import IEMOCAP  # https://pytorch.org/audio/master/generated/torchaudio.datasets.IEMOCAP.html
-from transformers import WhisperPreTrainedModel, AutoConfig, WhisperProcessor
+from transformers import WhisperPreTrainedModel, AutoConfig, WhisperProcessor, WhisperModel
 
 # ========= Configuration =========
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -43,7 +43,7 @@ class FeatureExtractor(WhisperPreTrainedModel):
         self.config = config
 
         # only keep some encoder layers
-        self.whisper = WhisperPreTrainedModel(config).encoder
+        self.whisper = WhisperModel(config).encoder
         self.whiser._freeze_parameters()
         self.whisper.layers = self.whisper.layers[:config.num_encoder_layers]
 
