@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 A script to get the features from the IEMOCAP dataset using OpenAI's whisper model as a feature extractor.
 
@@ -41,7 +40,6 @@ class FeatureExtractor(WhisperPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
-        self.pooling_mode = config.pooling_mode
         self.config = config
 
         # only keep some encoder layers
