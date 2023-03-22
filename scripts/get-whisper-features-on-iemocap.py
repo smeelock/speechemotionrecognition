@@ -44,7 +44,7 @@ class FeatureExtractor(WhisperPreTrainedModel):
 
         # only keep some encoder layers
         self.whisper = WhisperModel(config).encoder
-        self.whiser._freeze_parameters()
+        self.whisper._freeze_parameters()
         self.whisper.layers = self.whisper.layers[:config.num_encoder_layers]
 
         self.init_weights()
