@@ -166,7 +166,6 @@ class CustomIEMOCAP(torch.utils.data.Dataset):
 
 
 iemocap = IEMOCAP(root=data_dir)  # in function, path = root / "IEMOCAP"
-iemocap = Subset(iemocap, range(int(debug_size * len(iemocap))))
 
 # ========= Dataset =========
 dataset = CustomIEMOCAP(data=iemocap, processor=processor)
