@@ -29,7 +29,7 @@ if is_apex_available():
 os.environ["WANDB_PROJECT"] = "test"
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_dir = os.path.join(base_dir, "data/raw")
-output_dir = os.path.join(base_dir, "run/")
+output_dir = os.path.join(base_dir, "runs/")
 
 debug_size = 1  # 0.1 = 10% of the dataset
 test_split_size = 0.2
