@@ -5,6 +5,7 @@ OpenAI's whisper model as a feature extractor.
 Original file is located at
     https://colab.research.google.com/drive/1-vw1bNt-e8DdzAk74tEqbIkBiL2hfaOf
 """
+
 import os
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union, List, Dict
@@ -18,17 +19,19 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.data import Subset, random_split
 from torchaudio.datasets import IEMOCAP  # https://pytorch.org/audio/master/generated/torchaudio.datasets.IEMOCAP.html
 from transformers import WhisperPreTrainedModel, AutoConfig, WhisperProcessor, WhisperModel, TrainingArguments, \
-    EvalPrediction, Trainer
+    EvalPrediction, Trainer, is_apex_available
 from transformers.utils import ModelOutput
 
+if is_apex_available():
+    from apex import amp
+
 # ========= Configuration =========
+os.environ["WANDB_PROJECT"] = "test"
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_dir = os.path.join(base_dir, "data/raw")
 output_dir = os.path.join(base_dir, "run/")
 
-keep_n_encoder_layers = 4
-
-debug_size = 0.1  # 0.1 = 10% of the dataset
+debug_size = 1  # 0.1 = 10% of the dataset
 test_split_size = 0.2
 
 feature_to_idx = {key: i for i, key in enumerate(["wav", "sampling_rate", "filename", "label", "speaker"])}
@@ -90,7 +93,7 @@ class WhisperForSpeechClassification(WhisperPreTrainedModel):
         self.encoder = WhisperModel(config).encoder
 
         # only keep first n encoding layers
-        self.encoder.layers = self.encoder.layers[:config.keep_n_encoder_layers]
+        self.encoder.layers = self.encoder.layers[:config.num_encoder_layers]
         self.classifier = ClassificationHead(config)
 
         self.init_weights()
@@ -140,6 +143,7 @@ model = WhisperForSpeechClassification.from_pretrained(
     model_name_or_path,
     config=config
 )
+model.freeze_encoder()
 
 # ========= IEMOCAP =========
 processor = WhisperProcessor.from_pretrained(model_name_or_path)
@@ -147,17 +151,15 @@ target_sampling_rate = processor.feature_extractor.sampling_rate
 
 
 class CustomIEMOCAP(torch.utils.data.Dataset):
-    def __init__(self, data, processor, encoder):
+    def __init__(self, data, processor):
         self.data = data
         self.processor = processor
-        self.encoder = encoder
 
     def __getitem__(self, index):
         wav, _, _, label, _ = self.data[index]
-        processed_inputs = self.processor(wav.squeeze(), sampling_rate=target_sampling_rate)
-        encoded_inputs = self.encoder(**processed_inputs)
-        encoded_inputs["labels"] = label2id[label]
-        return encoded_inputs
+        inputs = self.processor(wav.squeeze(), sampling_rate=target_sampling_rate)
+        inputs["labels"] = label2id[label]
+        return inputs
 
     def __len__(self):
         return len(self.data)
@@ -167,7 +169,7 @@ iemocap = IEMOCAP(root=data_dir)  # in function, path = root / "IEMOCAP"
 iemocap = Subset(iemocap, range(int(debug_size * len(iemocap))))
 
 # ========= Dataset =========
-dataset = CustomIEMOCAP(data=iemocap, processor=processor, encoder=model)
+dataset = CustomIEMOCAP(data=iemocap, processor=processor)
 train_ds, test_ds = random_split(dataset, [1 - test_split_size, test_split_size],
                                  generator=torch.Generator().manual_seed(42))
 
@@ -230,13 +232,24 @@ class CTCTrainer(Trainer):
         model.train()
         inputs = self._prepare_inputs(inputs)
 
-        with autocast():
-            loss = model(**inputs).get("loss")
+        if hasattr(self, 'use_amp') and self.use_amp:
+            with autocast():
+                loss = self.compute_loss(model, inputs)
+        else:
+            loss = self.compute_loss(model, inputs)
 
         if self.args.gradient_accumulation_steps > 1:
             loss = loss / self.args.gradient_accumulation_steps
 
-        self.scaler.scale(loss).backward()
+        if hasattr(self, 'use_amp') and self.use_amp:
+            self.scaler.scale(loss).backward()
+        elif hasattr(self, 'use_apex') and self.use_apex:
+            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                scaled_loss.backward()
+        elif hasattr(self, 'deepspeed') and self.deepspeed:
+            self.deepspeed.backward(loss)
+        else:
+            loss.backward()
 
         return loss.detach()
 
@@ -254,7 +267,15 @@ class CTCTrainer(Trainer):
         if self.args.gradient_accumulation_steps > 1:
             loss = loss / self.args.gradient_accumulation_steps
 
-        self.scaler.scale(loss).backward()
+        if hasattr(self, 'use_amp') and self.use_amp:
+            self.scaler.scale(loss).backward()
+        elif hasattr(self, 'use_apex') and self.use_apex:
+            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                scaled_loss.backward()
+        elif hasattr(self, 'deepspeed') and self.deepspeed:
+            self.deepspeed.backward(loss)
+        else:
+            loss.backward()
 
         with torch.no_grad():
             torch.cuda.empty_cache()
