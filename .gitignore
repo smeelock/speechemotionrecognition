@@ -720,4 +720,5 @@ data/
 models/
 
 # wandb stuff
-*/wandb/
+wandb/*
+*/wandb/*
