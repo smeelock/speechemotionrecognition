@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## GPU queue
-# -q gpustd.q
+#$ -q fox.q
 
 ## Job name
 #$ -N train-ser-classifier-with-whisper-4l-gpu
@@ -14,7 +14,7 @@
 #$ -e $HOME/speechemotionrecognition/logs
 
 ## Devices
-#$ -hard -l gpu=1
+#$ -l gpu=1
 
 source $HOME/miniconda3/bin/activate speechemotionrecognition
 python $HOME/speechemotionrecognition/scripts/train-classifier.py
