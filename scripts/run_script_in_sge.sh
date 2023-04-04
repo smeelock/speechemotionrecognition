@@ -4,14 +4,16 @@
 #$ -q fox.q
 
 ## Job name
-#$ -N train-ser-classifier-with-whisper-4l-gpu
+#$ -N train-ser-classifier-with-whisper-4l
 
 ## Working directory
 #$ -wd $HOME/speechemotionrecognition
 
-## STDOUT/STDERR output files
+## 2&>1
+#$ -j y
+
+## STDOUT/STDERR output file
 #$ -o $HOME/speechemotionrecognition/logs
-#$ -e $HOME/speechemotionrecognition/logs
 
 ## Devices
 #$ -l gpu=1
