@@ -26,11 +26,16 @@ if is_apex_available():
     from apex import amp
 
 # ========= Configuration =========
-os.environ["WANDB_PROJECT"] = "test"
+# wandb
+os.environ["WANDB_WATCH"] = "all"
+os.environ["WANDB_LOG_MODEL"] = "checkpoint"
+
+# paths
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_dir = os.path.join(base_dir, "data/raw")
 output_dir = os.path.join(base_dir, "runs/")
 
+# training
 debug_size = 1  # 0.1 = 10% of the dataset
 test_split_size = 0.2
 
@@ -40,6 +45,7 @@ num_labels = len(label_list)
 label2id = {label: i for i, label in enumerate(label_list)}
 id2label = {i: label for i, label in enumerate(label_list)}
 
+# evaluation
 metrics = {
     "unweighted_accuracy": accuracy_score,
     "weighted_accuracy": balanced_accuracy_score,
