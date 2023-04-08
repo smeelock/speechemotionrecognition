@@ -5,7 +5,6 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 # dataset
 DEFAULT_TARGET_SAMPLING_RATE = 16000
 DEFAULT_IEMOCAP_LABEL_LIST = ["neu", "hap", "ang", "sad", "exc", "fru"]
-DEFAULT_IEMOCAP_NUM_LABELS = len(DEFAULT_IEMOCAP_LABEL_LIST)
 DEFAULT_IEMOCAP_LABEL2ID = {label: i for i, label in enumerate(DEFAULT_IEMOCAP_LABEL_LIST)}
 DEFAULT_IEMOCAP_ID2LABEL = {i: label for i, label in enumerate(DEFAULT_IEMOCAP_LABEL_LIST)}
 
@@ -22,6 +21,7 @@ DEFAULT_LOGS_DIR = os.path.join(PACKAGE_DIR, "logs/")
 # training
 DEFAULT_DEBUG_SIZE = 1  # 0.1 = 10% of the dataset
 DEFAULT_TEST_SPLIT_SIZE = 0.2
+DEFAULT_SEED = 42
 
 # evaluation
 DEFAULT_METRICS = {
