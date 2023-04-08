@@ -6,13 +6,13 @@ from torch.utils.data import random_split
 from torchaudio.datasets import IEMOCAP
 from transformers import AutoConfig, WhisperProcessor, TrainingArguments
 
-from src import utils
-from src.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_DATA_DIR, \
+import utils
+from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_DATA_DIR, \
     DEFAULT_OUTPUT_DIR, DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
-    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE
-from src.datasets import ProcessedIEMOCAP
-from src.models import WhisperEncoderForSpeechClassification
-from src.trainers import DataCollatorCTCWithPadding, CTCTrainer
+    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT
+from datasets import ProcessedIEMOCAP
+from models import WhisperEncoderForSpeechClassification
+from trainers import DataCollatorCTCWithPadding, CTCTrainer
 
 
 @click.command()

@@ -1,7 +1,7 @@
 import torch
 from torchaudio.datasets import IEMOCAP
 
-from .constants import DEFAULT_TARGET_SAMPLING_RATE
+from constants import DEFAULT_TARGET_SAMPLING_RATE
 
 
 class ProcessedIEMOCAP(torch.utils.data.Dataset):
