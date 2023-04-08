@@ -1,7 +1,7 @@
 import numpy as np
 from transformers import EvalPrediction
 
-from constants import DEFAULT_METRICS
+from .constants import DEFAULT_METRICS
 
 
 def compute_metrics(p: EvalPrediction):
