@@ -73,7 +73,11 @@ def main(
     setattr(config, "num_encoder_layers", num_encoder_layers)
 
     # model
-    model = get_model(model_name_or_path, config)
+    model = WhisperEncoderForSpeechClassification.from_pretrained(
+        model_name_or_path,
+        config=config
+    )
+    model.freeze_encoder()
 
     # dataset
     processor = WhisperProcessor.from_pretrained(model_name_or_path)
@@ -122,15 +126,6 @@ def main(
     # train
     trainer.train()
 
-
-@click.command()
-def get_model(model_name_or_path, config):
-    model = WhisperEncoderForSpeechClassification.from_pretrained(
-        model_name_or_path,
-        config=config
-    )
-    model.freeze_encoder()
-    return model
 
 if __name__ == "__main__":
     main()
