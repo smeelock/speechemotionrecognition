@@ -1,5 +1,6 @@
 click
 datasets
+jupyter
 pandas
 pedalboard
 pydub
