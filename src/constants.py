@@ -11,6 +11,7 @@ DEFAULT_IEMOCAP_ID2LABEL = {i: label for i, label in enumerate(DEFAULT_IEMOCAP_L
 # wandb
 DEFAULT_WANDB_WATCH = "all"
 DEFAULT_WANDB_LOG_MODEL = "checkpoint"
+DEFAULT_WANDB_PROJECT = "huggingface"
 
 # paths
 PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,7 +20,7 @@ DEFAULT_OUTPUT_DIR = os.path.join(PACKAGE_DIR, "runs/")
 DEFAULT_LOGS_DIR = os.path.join(PACKAGE_DIR, "logs/")
 
 # training
-DEFAULT_DEBUG_SIZE = 1  # 0.1 = 10% of the dataset
+DEFAULT_DEBUG_SIZE = 0.1  # 0.1 = 10% of the dataset
 DEFAULT_TEST_SPLIT_SIZE = 0.2
 DEFAULT_SEED = 42
 
