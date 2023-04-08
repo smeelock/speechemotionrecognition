@@ -6,19 +6,19 @@ from torch.utils.data import random_split
 from torchaudio.datasets import IEMOCAP
 from transformers import AutoConfig, WhisperProcessor, TrainingArguments
 
-import utils
-from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_DATA_DIR, \
+from src import utils
+from src.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_DATA_DIR, \
     DEFAULT_OUTPUT_DIR, DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE
-from datasets import ProcessedIEMOCAP
-from models import WhisperEncoderForSpeechClassification
-from trainers import DataCollatorCTCWithPadding, CTCTrainer
+from src.datasets import ProcessedIEMOCAP
+from src.models import WhisperEncoderForSpeechClassification
+from src.trainers import DataCollatorCTCWithPadding, CTCTrainer
 
 
 @click.command()
 @click.option("--batch-size", default=4, type=int, help="Batch size")
 @click.option("--data-dir", default=DEFAULT_DATA_DIR, type=str, help="Data directory")
-@click.option("--dataset", default="iemocap", type=click.choice(["iemocap"], case_sensitive=False), help="Dataset name")
+@click.option("--dataset", default="iemocap", type=click.Choice(["iemocap"], case_sensitive=False), help="Dataset name")
 @click.option("--debug", is_flag=True, help="Debug mode")
 @click.option("--epochs", default=10, type=int, help="Number of epochs")
 @click.option("--learning-rate", default=5e-5, type=float, help="Learning rate")
@@ -29,7 +29,7 @@ from trainers import DataCollatorCTCWithPadding, CTCTrainer
 @click.option("--test-split-size", default=DEFAULT_TEST_SPLIT_SIZE, type=float, help="Test split size")
 @click.option("--wandb-disabled", is_flag=True, help="Disable wandb")
 @click.option("--wandb-log-model", default=DEFAULT_WANDB_LOG_MODEL, type=str, help="Wandb log model")
-@click.option("--wandb-project", type=str, help="Wandb project")
+@click.option("--wandb-project", default="", type=str, help="Wandb project")
 @click.option("--wandb-watch", default=DEFAULT_WANDB_WATCH, type=str, help="Wandb watch")
 def main(
     batch_size,
@@ -73,7 +73,7 @@ def main(
     setattr(config, "num_encoder_layers", num_encoder_layers)
 
     # model
-    model = get_model()
+    model = get_model(model_name_or_path, config)
 
     # dataset
     processor = WhisperProcessor.from_pretrained(model_name_or_path)
@@ -132,5 +132,5 @@ def get_model(model_name_or_path, config):
     model.freeze_encoder()
     return model
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
