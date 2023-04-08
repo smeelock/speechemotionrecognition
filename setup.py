@@ -1,7 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='Speech Emotion Recognition',
-    url='https://github.com/smeelock/speechemotionrecognition',
-    packages=find_packages(include=['src', 'src.*']),
+    name="src",
+    packages=find_packages(),
+    version="0.1.0",
+    author="smeelock",
+    license="MIT",
 )
