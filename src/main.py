@@ -19,7 +19,7 @@ from trainers import DataCollatorCTCWithPadding, CTCTrainer
 @click.option("--batch-size", default=4, type=int, help="Batch size")
 @click.option("--data-dir", default=DEFAULT_DATA_DIR, type=str, help="Data directory")
 @click.option("--dataset", default="iemocap", type=click.Choice(["iemocap"], case_sensitive=False), help="Dataset name")
-@click.option("--debug", is_flag=True, help="Debug mode")
+@click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--epochs", default=10, type=int, help="Number of epochs")
 @click.option("--learning-rate", default=5e-5, type=float, help="Learning rate")
 @click.option("--model-name-or-path", default=DEFAULT_WHISPER_MODEL_NAME, type=str, help="Model name or path")
@@ -29,7 +29,7 @@ from trainers import DataCollatorCTCWithPadding, CTCTrainer
 @click.option("--test-split-size", default=DEFAULT_TEST_SPLIT_SIZE, type=float, help="Test split size")
 @click.option("--wandb-disabled", is_flag=True, help="Disable wandb")
 @click.option("--wandb-log-model", default=DEFAULT_WANDB_LOG_MODEL, type=str, help="Wandb log model")
-@click.option("--wandb-project", default="", type=str, help="Wandb project")
+@click.option("--wandb-project", default=DEFAULT_WANDB_PROJECT, type=str, help="Wandb project")
 @click.option("--wandb-watch", default=DEFAULT_WANDB_WATCH, type=str, help="Wandb watch")
 def main(
     batch_size,
@@ -57,9 +57,8 @@ def main(
         raise NotImplementedError
 
     if not wandb_disabled:
-        if not wandb_project:
-            if debug:
-                wandb_project = "test"
+        if debug:
+            wandb_project = "test"
         os.environ["WANDB_PROJECT"] = wandb_project
         os.environ["WANDB_WATCH"] = wandb_watch
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
@@ -84,7 +83,7 @@ def main(
     iemocap = IEMOCAP(root=data_dir)  # in function, path = root / "IEMOCAP"
     if debug:
         iemocap = torch.utils.data.Subset(iemocap, range(int(DEFAULT_DEBUG_SIZE * len(iemocap))))
-    dataset = ProcessedIEMOCAP(data=iemocap, processor=processor)
+    dataset = ProcessedIEMOCAP(data=iemocap, processor=processor, config=config)
     train_ds, test_ds = random_split(
         dataset,
         [1 - test_split_size, test_split_size],
@@ -106,7 +105,7 @@ def main(
         save_steps=100,
         eval_steps=10,
         logging_steps=50,
-        report_to=None if wandb_disabled else ["wandb"],
+        report_to=[] if wandb_disabled else ["wandb"],
         half_precision_backend="auto",  # should be 'cuda_amp' half precision backend
         gradient_checkpointing=True,  # use gradient checkpointing to save memory at the expense
         # of slower backward pass
