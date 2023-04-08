@@ -2,8 +2,10 @@ click
 jupyter
 pandas
 pedalboard
+scikit-learn
 tensorflow_datasets
 torch
 torchaudio
 tqdm
 transformers
+wandb

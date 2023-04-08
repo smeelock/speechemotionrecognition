@@ -12,3 +12,4 @@ torch
 torchaudio
 tqdm
 transformers
+wandb
