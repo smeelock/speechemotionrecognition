@@ -2,22 +2,23 @@ import os
 
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 
-# dataset
-DEFAULT_TARGET_SAMPLING_RATE = 16000
-DEFAULT_IEMOCAP_LABEL_LIST = ["neu", "hap", "ang", "sad", "exc", "fru"]
-DEFAULT_IEMOCAP_LABEL2ID = {label: i for i, label in enumerate(DEFAULT_IEMOCAP_LABEL_LIST)}
-DEFAULT_IEMOCAP_ID2LABEL = {i: label for i, label in enumerate(DEFAULT_IEMOCAP_LABEL_LIST)}
+# paths
+PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_DATA_DIR = os.path.join(PACKAGE_DIR, "data/raw")
+DEFAULT_OUTPUT_DIR = os.path.join(PACKAGE_DIR, "runs/")
+DEFAULT_LOGS_DIR = os.path.join(PACKAGE_DIR, "logs/")
 
 # wandb
 DEFAULT_WANDB_WATCH = "all"
 DEFAULT_WANDB_LOG_MODEL = "checkpoint"
 DEFAULT_WANDB_PROJECT = "huggingface"
 
-# paths
-PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_DATA_DIR = os.path.join(PACKAGE_DIR, "data/raw")
-DEFAULT_OUTPUT_DIR = os.path.join(PACKAGE_DIR, "runs/")
-DEFAULT_LOGS_DIR = os.path.join(PACKAGE_DIR, "logs/")
+# dataset
+DEFAULT_TARGET_SAMPLING_RATE = 16000
+DEFAULT_IEMOCAP_DIR = os.path.join(DEFAULT_DATA_DIR, "IEMOCAP")
+DEFAULT_IEMOCAP_LABEL_LIST = ["neu", "hap", "ang", "sad", "exc", "fru"]
+DEFAULT_IEMOCAP_LABEL2ID = {label: i for i, label in enumerate(DEFAULT_IEMOCAP_LABEL_LIST)}
+DEFAULT_IEMOCAP_ID2LABEL = {i: label for i, label in enumerate(DEFAULT_IEMOCAP_LABEL_LIST)}
 
 # training
 DEFAULT_DEBUG_SIZE = 0.1  # 0.1 = 10% of the dataset
