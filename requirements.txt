@@ -1,8 +1,10 @@
 click
+datasets
 jupyter
 pandas
 pedalboard
 scikit-learn
+soundfile
 tensorflow_datasets
 torch
 torchaudio

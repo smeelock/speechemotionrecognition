@@ -5,6 +5,7 @@ pandas
 pedalboard
 pydub
 scikit-learn
+soundfile
 tensorflow-datasets
 tensorflow-macos
 tensorflow-metal
