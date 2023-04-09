@@ -19,9 +19,8 @@ def _get_wavs_paths(data_dir):
     return relative_paths
 
 
-def _get_metadata(root):
-    root = Path(root)
-    path = root / "IEMOCAP"
+def _get_metadata(path):
+    path = Path(path)
     assert os.path.isdir(path), "Dataset not found."
 
     sessions = (1, 2, 3, 4, 5)
