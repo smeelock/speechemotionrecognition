@@ -2,22 +2,21 @@ import os
 
 import click
 import torch
-from torch.utils.data import random_split
-from torchaudio.datasets import IEMOCAP
 from transformers import AutoConfig, WhisperProcessor, TrainingArguments
 
 import utils
-from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_DATA_DIR, \
-    DEFAULT_OUTPUT_DIR, DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
-    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT
-from dataset_helpers import ProcessedIEMOCAP
+from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
+    DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
+    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
+    DEFAULT_TARGET_SAMPLING_RATE
+from dataset_helpers import get_iemocap
 from models import WhisperEncoderForSpeechClassification
 from trainers import DataCollatorCTCWithPadding, CTCTrainer
 
 
 @click.command()
 @click.option("--batch-size", default=4, type=int, help="Batch size")
-@click.option("--data-dir", default=DEFAULT_DATA_DIR, type=str, help="Data directory")
+@click.option("--data-dir", default=DEFAULT_IEMOCAP_DIR, type=str, help="Data directory")
 @click.option("--dataset", default="iemocap", type=click.Choice(["iemocap"], case_sensitive=False), help="Dataset name")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--epochs", default=10, type=int, help="Number of epochs")
@@ -80,15 +79,20 @@ def main(
 
     # dataset
     processor = WhisperProcessor.from_pretrained(model_name_or_path)
-    iemocap = IEMOCAP(root=data_dir)  # in function, path = root / "IEMOCAP"
+    dataset = get_iemocap(data_dir)
     if debug:
-        iemocap = torch.utils.data.Subset(iemocap, range(int(DEFAULT_DEBUG_SIZE * len(iemocap))))
-    dataset = ProcessedIEMOCAP(data=iemocap, processor=processor, config=config)
-    train_ds, test_ds = random_split(
-        dataset,
-        [1 - test_split_size, test_split_size],
-        generator=torch.Generator().manual_seed(seed)
-    )
+        dataset = dataset.select(range(DEFAULT_DEBUG_SIZE))
+
+    def _process(example):
+        target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
+        if hasattr(processor, "feature_encoder"):
+            target_sampling_rate = processor.feature_encoder.sampling_rate
+        example["input_features"] = processor(example["audio"], sampling_rate=target_sampling_rate).input_values
+        return example
+
+    dataset = dataset.map(_process)
+    dataset = dataset.train_test_split(test_size=test_split_size, seed=seed)
+    train_ds, test_ds = dataset['train'], dataset['test']
 
     # trainer
     training_args = TrainingArguments(
