@@ -1,4 +1,5 @@
 click
+datasets
 jupyter
 pandas
 pedalboard
