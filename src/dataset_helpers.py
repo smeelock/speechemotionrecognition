@@ -2,9 +2,9 @@ import os
 import re
 from pathlib import Path
 
-from datasets import Dataset, Value, Features
+from datasets import Dataset, Value, Features, ClassLabel, DatasetInfo, Audio
 
-from constants import DEFAULT_IEMOCAP_LABEL_LIST
+from constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE
 
 
 # inspired by https://github.com/pytorch/audio/blob/main/torchaudio/datasets/iemocap.py
@@ -19,28 +19,27 @@ def _get_wavs_paths(data_dir):
     return relative_paths
 
 
-def _get_metadata(path):
-    path = Path(path)
+def _get_dict(path):
     assert os.path.isdir(path), "Dataset not found."
 
     sessions = (1, 2, 3, 4, 5)
-    tmp = []  # will contain all wav file stems
-    metadata = {}  # will contain all metadata
+    tmp = {}  # will contain all wav file stems
+    labels = []
+    paths = []
+    speakers = []
 
     for session in sessions:
         session_name = f"Session{session}"
         session_dir = path / session_name
 
-        # get wav paths
-        wav_paths = _get_wavs_paths(session_dir)
-        for wav_path in wav_paths:
+        # get all wav paths in tmp
+        for wav_path in _get_wavs_paths(session_dir):
             wav_stem = str(Path(wav_path).stem)
-            tmp.append(wav_stem)
+            tmp[wav_stem] = wav_path
 
         # add label and speaker information
         label_dir = session_dir / "dialog" / "EmoEvaluation"
-        query = "*.txt"
-        label_paths = label_dir.glob(query)
+        label_paths = label_dir.glob("*.txt")
 
         for label_path in label_paths:
             with open(label_path, "r") as f:
@@ -50,31 +49,27 @@ def _get_metadata(path):
                     line = re.split("[\t\n]", line)
                     wav_stem = line[1]
                     label = line[2]
-                    if wav_stem not in tmp:  # only use data that has a wav file
+                    if wav_stem not in tmp.keys():  # only use data that has a wav file
                         continue
                     if label not in DEFAULT_IEMOCAP_LABEL_LIST:  # only use labels that are in the default list
                         continue
-                    metadata[wav_stem] = {}
-                    metadata[wav_stem]["label"] = label
-                    metadata[wav_stem]["speaker"] = wav_stem.split("_")[0]
 
-        for wav_path in wav_paths:
-            wav_stem = str(Path(wav_path).stem)
-            if wav_stem in metadata:
-                metadata[wav_stem]["file_name"] = wav_path
+                    paths.append(tmp[wav_stem])
+                    labels.append(label)
+                    speakers.append(wav_stem.split("_")[0])
 
-    return metadata
+    return {"audio": paths, "path": paths, "label": labels, "speaker": speakers}
 
 
 def get_iemocap(root):
-    metadata = _get_metadata(root)
-    data_files = [m["file_name"] for m in metadata.values()]
-
+    root = Path(root)
     features = Features({
-        "wav": "",
+        "audio": Audio(sampling_rate=DEFAULT_TARGET_SAMPLING_RATE),
         "path": Value(dtype='string', id=None),
-        "sample_rate": Value(dtype='int', id=None),
-        "label": Value(dtype='string', id=None),
+        "label": ClassLabel(num_classes=len(DEFAULT_IEMOCAP_LABEL_LIST), names=DEFAULT_IEMOCAP_LABEL_LIST,
+                            names_file=None, id=None),
         "speaker": Value(dtype='string', id=None)
     })
-    return Dataset.from_dict("audiofolder", data_files=data_files)
+    info = DatasetInfo(description="A 🤗 datasets loader for the IEMOCAP dataset",
+                       homepage="https://sail.usc.edu/iemocap/", features=features)
+    return Dataset.from_dict(_get_dict(root), info=info)
