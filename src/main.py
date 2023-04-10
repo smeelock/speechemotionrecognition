@@ -2,7 +2,7 @@ import os
 
 import click
 import torch
-from transformers import AutoConfig, WhisperProcessor, TrainingArguments
+from transformers import AutoConfig, WhisperProcessor, TrainingArguments, Trainer
 
 import utils
 from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
@@ -11,7 +11,7 @@ from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHIS
     DEFAULT_TARGET_SAMPLING_RATE
 from dataset_helpers import get_iemocap
 from models import WhisperEncoderForSpeechClassification
-from trainers import DataCollatorCTCWithPadding, CTCTrainer
+from trainers import DataCollatorCTCWithPadding
 
 
 @click.command()
@@ -116,7 +116,7 @@ def main(
     )
 
     data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
-    trainer = CTCTrainer(
+    trainer = Trainer(
         model=model,
         data_collator=data_collator,
         args=training_args,
