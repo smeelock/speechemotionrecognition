@@ -8,17 +8,6 @@ from constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE
 
 
 # inspired by https://github.com/pytorch/audio/blob/main/torchaudio/datasets/iemocap.py
-def _get_wavs_paths(data_dir):
-    wav_dir = data_dir / "sentences" / "wav"
-    wav_paths = sorted(str(p) for p in wav_dir.glob("*/*.wav"))
-    relative_paths = []
-    for wav_path in wav_paths:
-        start = wav_path.find("Session")
-        wav_path = wav_path[start:]
-        relative_paths.append(wav_path)
-    return relative_paths
-
-
 def _get_dict(path):
     assert os.path.isdir(path), "Dataset not found."
 
@@ -33,7 +22,9 @@ def _get_dict(path):
         session_dir = path / session_name
 
         # get all wav paths in tmp
-        for wav_path in _get_wavs_paths(session_dir):
+        wav_dir = session_dir / "sentences" / "wav"
+        wav_paths = sorted(str(p) for p in wav_dir.glob("*/*.wav"))
+        for wav_path in wav_paths:
             wav_stem = str(Path(wav_path).stem)
             tmp[wav_stem] = wav_path
 
