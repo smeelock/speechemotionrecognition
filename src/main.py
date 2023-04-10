@@ -81,7 +81,7 @@ def main(
     processor = WhisperProcessor.from_pretrained(model_name_or_path)
     dataset = get_iemocap(data_dir)
     if debug:
-        dataset = dataset.select(range(DEFAULT_DEBUG_SIZE))
+        dataset = dataset.select(range(int(DEFAULT_DEBUG_SIZE * len(dataset))))
 
     def _process(example):
         target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
