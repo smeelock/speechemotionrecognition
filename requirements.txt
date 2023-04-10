@@ -1,6 +1,7 @@
 click
 datasets
 jupyter
+librosa
 pandas
 pedalboard
 scikit-learn
