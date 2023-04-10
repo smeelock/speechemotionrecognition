@@ -87,10 +87,10 @@ def main(
         target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
         if hasattr(processor, "feature_encoder"):
             target_sampling_rate = processor.feature_encoder.sampling_rate
-        example["input_features"] = processor(example["audio"], sampling_rate=target_sampling_rate).input_values
+        example["input_features"] = processor(example["audio"]["array"], sampling_rate=target_sampling_rate).input_features
         return example
 
-    dataset = dataset.map(_process)
+    dataset = dataset.map(_process, desc="Processing IEMOCAP dataset")
     dataset = dataset.train_test_split(test_size=test_split_size, seed=seed)
     train_ds, test_ds = dataset['train'], dataset['test']
 
