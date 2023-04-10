@@ -58,7 +58,7 @@ class CTCTrainer(Trainer):
         elif hasattr(self, 'deepspeed') and self.deepspeed:
             self.deepspeed.backward(loss)
         else:
-            loss.backward()
+            loss.sum().backward()
 
         return loss.detach()
 
@@ -84,7 +84,7 @@ class CTCTrainer(Trainer):
         elif hasattr(self, 'deepspeed') and self.deepspeed:
             self.deepspeed.backward(loss)
         else:
-            loss.backward()
+            loss.sum().backward()
 
         with torch.no_grad():
             torch.cuda.empty_cache()
