@@ -8,7 +8,7 @@ import utils
 from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
-    DEFAULT_TARGET_SAMPLING_RATE
+    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS
 from dataset_helpers import get_iemocap
 from models import WhisperEncoderForSpeechClassification
 from trainers import DataCollatorCTCWithPadding
@@ -19,7 +19,7 @@ from trainers import DataCollatorCTCWithPadding
 @click.option("--data-dir", default=DEFAULT_IEMOCAP_DIR, type=str, help="Data directory")
 @click.option("--dataset", default="iemocap", type=click.Choice(["iemocap"], case_sensitive=False), help="Dataset name")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
-@click.option("--epochs", default=10, type=int, help="Number of epochs")
+@click.option("--epochs", default=2, type=int, help="Number of epochs")
 @click.option("--learning-rate", default=5e-5, type=float, help="Learning rate")
 @click.option("--model-name-or-path", default=DEFAULT_WHISPER_MODEL_NAME, type=str, help="Model name or path")
 @click.option("--num-encoder-layers", default=4, type=int, help="Number of encoder layers")
@@ -48,6 +48,7 @@ def main(
     wandb_watch,
 ):
     # configuration
+    metrics = DEFAULT_METRICS
     if dataset == "iemocap":
         label_list = DEFAULT_IEMOCAP_LABEL_LIST
         label2id = DEFAULT_IEMOCAP_LABEL2ID
@@ -120,7 +121,7 @@ def main(
         model=model,
         data_collator=data_collator,
         args=training_args,
-        compute_metrics=utils.compute_metrics,
+        compute_metrics=utils.get_compute_metrics(metrics),
         train_dataset=train_ds,
         eval_dataset=test_ds,
         tokenizer=processor.feature_extractor,
