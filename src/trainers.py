@@ -20,7 +20,7 @@ class DataCollatorCTCWithPadding:
 
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         input_features = [{"input_features": feature["input_features"][0]} for feature in features]
-        label_features = [feature["labels"] for feature in features]
+        label_features = [feature["label"] for feature in features]
 
         d_type = torch.long if isinstance(label_features[0], int) else torch.float
 
