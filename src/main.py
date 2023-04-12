@@ -1,21 +1,20 @@
 import os
-import tqdm
 
 import click
 import torch
 from datasets import DatasetDict
 from sklearn.model_selection import LeaveOneGroupOut
-from transformers import AutoConfig, TrainingArguments, Trainer, AutoProcessor
+from tqdm import tqdm
+from transformers import AutoConfig, WhisperProcessor, TrainingArguments, Trainer, AutoProcessor
 
-from speechemotionrecognition.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, \
-    DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
-    DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
-    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
-    DEFAULT_METRICS, DEFAULT_CACHE_DIR, DEFAULT_DEBUG_SIZE
-from speechemotionrecognition.dataset_helpers import load_iemocap, process_dataset
-from speechemotionrecognition.models import WhisperEncoderForSpeechClassification
-from speechemotionrecognition.trainers import DataCollatorCTCWithPadding
-from speechemotionrecognition.utils import get_compute_metrics
+from .speechemotionrecognition import utils
+from .speechemotionrecognition.constants import DEFAULT_CACHE_DIR
+from .speechemotionrecognition.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, \
+    DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
+    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, DEFAULT_METRICS
+from .speechemotionrecognition.dataset_helpers import load_iemocap, process_dataset
+from .speechemotionrecognition.models import WhisperEncoderAsFeatureExtractor, SpeechClassificationHead
+from .speechemotionrecognition.trainers import DataCollatorCTCWithPadding
 
 
 @click.command()
@@ -72,6 +71,7 @@ def main(
         id2label=id2label
     )
     setattr(config, "num_encoder_layers", num_encoder_layers)
+    setattr(config, "merged_strategy", "max")
 
     # dataset
     processor = AutoProcessor.from_pretrained(model_name_or_path)
@@ -95,15 +95,19 @@ def main(
         })
 
         # model
-        model = WhisperEncoderForSpeechClassification.from_pretrained(
+        model = SpeechClassificationHead(config=config)
+
+        # dataset
+        processor = WhisperProcessor.from_pretrained(model_name_or_path)
+        feature_extractor = WhisperEncoderAsFeatureExtractor.from_pretrained(
             model_name_or_path,
             config=config
         )
-        model.freeze_encoder()
 
         # trainer
         training_args = TrainingArguments(
             output_dir=output_dir,
+            label_names=label_list,
             per_device_train_batch_size=batch_size,
             per_device_eval_batch_size=batch_size,
             gradient_accumulation_steps=1,
@@ -124,7 +128,7 @@ def main(
         trainer = Trainer(
             model=model,
             args=training_args,
-            compute_metrics=get_compute_metrics(metrics),
+            compute_metrics=utils.get_compute_metrics(metrics),
             train_dataset=ds["train"],
             eval_dataset=ds["test"],
             tokenizer=processor.feature_extractor,

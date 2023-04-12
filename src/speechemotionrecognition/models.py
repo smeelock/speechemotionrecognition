@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss
-from transformers import WhisperPreTrainedModel, WhisperModel, Wav2Vec2PreTrainedModel, Wav2Vec2Model
+from transformers import WhisperPreTrainedModel, WhisperModel
 from transformers.utils import ModelOutput
 
 
@@ -59,4 +59,31 @@ class SpeechClassificationHead(nn.Module):
             logits=logits,
             hidden_states=input_values.hidden_states,
             attentions=input_values.attentions,
+        )
+
+
+class WhisperEncoderAsFeatureExtractor(WhisperPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+        self.config = config
+        self.feature_extractor = WhisperModel(config).encoder
+
+        # only keep first n encoding layers
+        self.feature_extractor.layers = self.feature_extractor.layers[:config.num_encoder_layers]
+        
+        self.init_weights()
+
+    def forward(self,
+                input_values,
+                attention_mask=None,
+                output_attentions=None,
+                output_hidden_states=None,
+                return_dict=None
+                ):
+        return self.feature_extractor(
+            input_values,
+            attention_mask=attention_mask,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
         )
