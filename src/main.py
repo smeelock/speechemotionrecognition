@@ -98,7 +98,6 @@ def main(
     # trainer
     training_args = TrainingArguments(
         output_dir=output_dir,
-        label_names=label_list,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=1,
