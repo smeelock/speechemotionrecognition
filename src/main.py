@@ -8,7 +8,7 @@ import utils
 from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
-    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS
+    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS, DEFAULT_LOGS_DIR
 from dataset_helpers import get_iemocap
 from models import WhisperEncoderForSpeechClassification
 from trainers import DataCollatorCTCWithPadding
@@ -21,6 +21,7 @@ from trainers import DataCollatorCTCWithPadding
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--epochs", default=2, type=int, help="Number of epochs")
 @click.option("--learning-rate", default=5e-5, type=float, help="Learning rate")
+@click.option("--logging-dir", default=DEFAULT_LOGS_DIR, type=str, help="Logging directory")
 @click.option("--model-name-or-path", default=DEFAULT_WHISPER_MODEL_NAME, type=str, help="Model name or path")
 @click.option("--num-encoder-layers", default=4, type=int, help="Number of encoder layers")
 @click.option("--output-dir", default=DEFAULT_OUTPUT_DIR, type=str, help="Output directory")
@@ -37,6 +38,7 @@ def main(
     debug,
     epochs,
     learning_rate,
+    logging_dir,
     model_name_or_path,
     num_encoder_layers,
     output_dir,
@@ -88,7 +90,8 @@ def main(
         target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
         if hasattr(processor, "feature_encoder"):
             target_sampling_rate = processor.feature_encoder.sampling_rate
-        example["input_features"] = processor(example["audio"]["array"], sampling_rate=target_sampling_rate).input_features
+        example["input_features"] = processor(example["audio"]["array"],
+                                              sampling_rate=target_sampling_rate).input_features
         return example
 
     dataset = dataset.map(_process, desc="Processing IEMOCAP dataset")
@@ -98,6 +101,7 @@ def main(
     # trainer
     training_args = TrainingArguments(
         output_dir=output_dir,
+        logging_dir=logging_dir,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=1,
