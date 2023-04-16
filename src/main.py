@@ -1,4 +1,7 @@
+import logging
 import os
+import sys
+import time
 
 import click
 import torch
@@ -49,6 +52,15 @@ def main(
     wandb_project,
     wandb_watch,
 ):
+    # logger
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(
+        filename=os.path.join(logging_dir, f"main-{int(time.time())}.log"),
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+
     # configuration
     metrics = DEFAULT_METRICS
     if dataset == "iemocap":
@@ -101,7 +113,6 @@ def main(
     # trainer
     training_args = TrainingArguments(
         output_dir=output_dir,
-        logging_dir=logging_dir,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=1,
