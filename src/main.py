@@ -8,7 +8,7 @@ import utils
 from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
-    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS
+    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS, DEFAULT_CACHE_DIR
 from dataset_helpers import get_iemocap
 from models import WhisperEncoderForSpeechClassification
 from trainers import DataCollatorCTCWithPadding
@@ -16,6 +16,7 @@ from trainers import DataCollatorCTCWithPadding
 
 @click.command()
 @click.option("--batch-size", default=4, type=int, help="Batch size")
+@click.option("--cache-dir", default=DEFAULT_CACHE_DIR, type=str, help="Cache directory")
 @click.option("--data-dir", default=DEFAULT_IEMOCAP_DIR, type=str, help="Data directory")
 @click.option("--dataset", default="iemocap", type=click.Choice(["iemocap"], case_sensitive=False), help="Dataset name")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
@@ -32,6 +33,7 @@ from trainers import DataCollatorCTCWithPadding
 @click.option("--wandb-watch", default=DEFAULT_WANDB_WATCH, type=str, help="Wandb watch")
 def main(
     batch_size,
+    cache_dir,
     data_dir,
     dataset,
     debug,
@@ -88,10 +90,11 @@ def main(
         target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
         if hasattr(processor, "feature_encoder"):
             target_sampling_rate = processor.feature_encoder.sampling_rate
-        example["input_features"] = processor(example["audio"]["array"], sampling_rate=target_sampling_rate).input_features
+        example["input_features"] = processor(example["audio"]["array"],
+                                              sampling_rate=target_sampling_rate).input_features
         return example
 
-    dataset = dataset.map(_process, desc="Processing IEMOCAP dataset")
+    dataset = dataset.map(_process, desc="Processing IEMOCAP dataset", cache_file_name=f"{cache_dir}/iemocap.arrow")
     dataset = dataset.train_test_split(test_size=test_split_size, seed=seed)
     train_ds, test_ds = dataset['train'], dataset['test']
 
