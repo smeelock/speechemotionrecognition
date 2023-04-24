@@ -89,6 +89,14 @@ class WhisperEncoderForSpeechClassification(WhisperPreTrainedModel):
 
 
 class Wav2Vec2ForSpeechClassification(Wav2Vec2PreTrainedModel):
+    """Wav2Vec2 model for speech classification tasks.
+    Args:
+        - config (:obj:`Wav2Vec2Config`): Model configuration class with all the parameters of the model.
+
+    Notes:
+        This class also supports Wav2Vec2-Conformer and Wav2Vec2-XLSR models.
+    """
+
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels

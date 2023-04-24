@@ -8,9 +8,9 @@ import utils
 from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
-    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS, DEFAULT_CACHE_DIR
+    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS, DEFAULT_CACHE_DIR, DEFAULT_MODEL_NAMES
 from dataset_helpers import get_iemocap
-from models import WhisperEncoderForSpeechClassification
+from models import WhisperEncoderForSpeechClassification, Wav2Vec2ForSpeechClassification
 from trainers import DataCollatorCTCWithPadding
 
 
@@ -22,7 +22,8 @@ from trainers import DataCollatorCTCWithPadding
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--epochs", default=2, type=int, help="Number of epochs")
 @click.option("--learning-rate", default=5e-5, type=float, help="Learning rate")
-@click.option("--model-name-or-path", default=DEFAULT_WHISPER_MODEL_NAME, type=str, help="Model name or path")
+@click.option("-m", "--model", "model", default=DEFAULT_WHISPER_MODEL_NAME,
+              type=click.Choice(list(DEFAULT_MODEL_NAMES.keys()), case_sensitive=False), help="Model name")
 @click.option("--num-encoder-layers", default=4, type=int, help="Number of encoder layers")
 @click.option("--output-dir", default=DEFAULT_OUTPUT_DIR, type=str, help="Output directory")
 @click.option("--seed", default=DEFAULT_SEED, type=int, help="Seed")
@@ -39,7 +40,7 @@ def main(
     debug,
     epochs,
     learning_rate,
-    model_name_or_path,
+    model,
     num_encoder_layers,
     output_dir,
     seed,
@@ -58,6 +59,10 @@ def main(
     else:
         raise NotImplementedError
 
+    if model not in DEFAULT_MODEL_NAMES.keys():
+        raise ValueError(f"model_name_or_path must be one of {DEFAULT_MODEL_NAMES.keys()}")
+    model_name_or_path = DEFAULT_MODEL_NAMES[model]
+
     if not wandb_disabled:
         if debug:
             wandb_project = "test"
@@ -74,7 +79,11 @@ def main(
     setattr(config, "num_encoder_layers", num_encoder_layers)
 
     # model
-    model = WhisperEncoderForSpeechClassification.from_pretrained(
+    if model == "whisper":
+        ModelConstructor = WhisperEncoderForSpeechClassification
+    elif model in ["wav2vec2", "wav2vec2-xlsr", "wav2vec2-conformer"]:
+        ModelConstructor = Wav2Vec2ForSpeechClassification
+    model = ModelConstructor.from_pretrained(
         model_name_or_path,
         config=config
     )

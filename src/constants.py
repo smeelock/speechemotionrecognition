@@ -35,5 +35,13 @@ DEFAULT_METRICS = {
 }
 
 # models
-DEFAULT_WHISPER_MODEL_NAME = "openai/whisper-base"
-DEFAULT_WAV2VEC2_MODEL_NAME = "facebook/wav2vec2-base-960h"
+DEFAULT_WHISPER_MODEL_NAME = "openai/whisper-base"  # 72M params
+DEFAULT_WAV2VEC2_MODEL_NAME = "facebook/wav2vec2-base-960h"  # 94M params
+DEFAULT_WAV2VEC2_XLSR_MODEL_NAME = "facebook/wav2vec2-large-xlsr-53"  # 315M params
+DEFAULT_WAV2VEC2_CONFORMER_MODEL_NAME = "facebook/wav2vec2-conformer-rel-pos-large"  # 618M params
+DEFAULT_MODEL_NAMES = {
+    "whisper": DEFAULT_WHISPER_MODEL_NAME,
+    "wav2vec2": DEFAULT_WAV2VEC2_MODEL_NAME,
+    "wav2vec2-xlsr": DEFAULT_WAV2VEC2_XLSR_MODEL_NAME,
+    "wav2vec2-conformer": DEFAULT_WAV2VEC2_CONFORMER_MODEL_NAME
+}
