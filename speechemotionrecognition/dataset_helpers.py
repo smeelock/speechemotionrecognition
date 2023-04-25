@@ -63,4 +63,6 @@ def get_iemocap(root):
     })
     info = DatasetInfo(description="A 🤗 datasets loader for the IEMOCAP dataset",
                        homepage="https://sail.usc.edu/iemocap/", features=features)
-    return Dataset.from_dict(_get_dict(root), info=info)
+    dataset = Dataset.from_dict(_get_dict(root), info=info)
+    dataset = dataset.filter(lambda example: example["label"] in DEFAULT_IEMOCAP_LABEL_LIST)
+    return dataset
