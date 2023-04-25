@@ -8,7 +8,8 @@ import utils
 from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
-    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS, DEFAULT_CACHE_DIR, DEFAULT_MODEL_NAMES, DEFAULT_POOLING_MODE
+    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS, DEFAULT_CACHE_DIR, DEFAULT_MODEL_NAMES, DEFAULT_POOLING_MODE, \
+    DEFAULT_CLASSIFIER_DROPOUT
 from dataset_helpers import get_iemocap
 from models import WhisperEncoderForSpeechClassification, Wav2Vec2ForSpeechClassification
 from trainers import DataCollatorCTCWithPadding
@@ -20,6 +21,7 @@ from trainers import DataCollatorCTCWithPadding
 @click.option("--data-dir", default=DEFAULT_IEMOCAP_DIR, type=str, help="Data directory")
 @click.option("--dataset", default="iemocap", type=click.Choice(["iemocap"], case_sensitive=False), help="Dataset name")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option("--classifier-dropout", default=DEFAULT_CLASSIFIER_DROPOUT, type=float, help="Dropout")
 @click.option("--epochs", default=2, type=int, help="Number of epochs")
 @click.option("--learning-rate", default=5e-5, type=float, help="Learning rate")
 @click.option("-m", "--model", "model", default=DEFAULT_WHISPER_MODEL_NAME,
@@ -38,6 +40,7 @@ def main(
     data_dir,
     dataset,
     debug,
+    classifier_dropout,
     epochs,
     learning_rate,
     model,
@@ -78,6 +81,7 @@ def main(
     )
     setattr(config, "num_encoder_layers", num_encoder_layers)
     setattr(config, "pooling_mode", DEFAULT_POOLING_MODE)
+    setattr(config, "classifier_dropout", classifier_dropout)
 
     # model
     if model == "whisper":
