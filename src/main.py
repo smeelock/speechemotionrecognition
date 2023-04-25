@@ -92,7 +92,7 @@ def main(
         model_name_or_path,
         config=config
     )
-    model.freeze_encoder()
+    model.freeze()  # freeze encoder for whisper, freeze all for wav2vec2
 
     # dataset
     processor = WhisperProcessor.from_pretrained(model_name_or_path)

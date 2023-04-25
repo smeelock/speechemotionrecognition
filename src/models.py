@@ -47,7 +47,7 @@ class WhisperEncoderForSpeechClassification(WhisperPreTrainedModel):
 
         self.init_weights()
 
-    def freeze_encoder(self):
+    def freeze(self):
         self.encoder._freeze_parameters()
 
     def forward(
@@ -108,8 +108,11 @@ class Wav2Vec2ForSpeechClassification(Wav2Vec2PreTrainedModel):
 
         self.init_weights()
 
-    def freeze_feature_extractor(self):
+        # freeze feature extractor
         self.wav2vec2.feature_extractor._freeze_parameters()
+
+    def freeze(self):
+        self.wav2vec2._freeze_parameters()
 
     def merged_strategy(
         self,
