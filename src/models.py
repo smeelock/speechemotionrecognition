@@ -108,11 +108,8 @@ class Wav2Vec2ForSpeechClassification(Wav2Vec2PreTrainedModel):
 
         self.init_weights()
 
-        # freeze feature extractor
-        self.wav2vec2.feature_extractor._freeze_parameters()
-
     def freeze(self):
-        self.wav2vec2._freeze_parameters()
+        self.wav2vec2.base_model.eval()
 
     def merged_strategy(
         self,
