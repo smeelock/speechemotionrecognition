@@ -2,7 +2,7 @@ import os
 
 import click
 import torch
-from transformers import AutoConfig, WhisperProcessor, TrainingArguments, Trainer
+from transformers import AutoConfig, TrainingArguments, Trainer, AutoProcessor
 
 import utils
 from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
@@ -95,7 +95,7 @@ def main(
     model.freeze()  # freeze encoder for whisper, freeze all for wav2vec2
 
     # dataset
-    processor = WhisperProcessor.from_pretrained(model_name_or_path)
+    processor = AutoProcessor.from_pretrained(model_name_or_path)
     dataset = get_iemocap(data_dir)
     if debug:
         dataset = dataset.select(range(int(DEFAULT_DEBUG_SIZE * len(dataset))))
