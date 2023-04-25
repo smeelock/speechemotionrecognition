@@ -25,7 +25,6 @@ DEFAULT_IEMOCAP_ID2LABEL = {i: label for i, label in enumerate(DEFAULT_IEMOCAP_L
 DEFAULT_DEBUG_SIZE = 0.1  # 0.1 = 10% of the dataset
 DEFAULT_TEST_SPLIT_SIZE = 0.2
 DEFAULT_SEED = 42
-
 # evaluation
 DEFAULT_METRICS = {
     "unweighted_accuracy": accuracy_score,
@@ -45,3 +44,4 @@ DEFAULT_MODEL_NAMES = {
     "wav2vec2-xlsr": DEFAULT_WAV2VEC2_XLSR_MODEL_NAME,
     "wav2vec2-conformer": DEFAULT_WAV2VEC2_CONFORMER_MODEL_NAME
 }
+DEFAULT_POOLING_MODE = "mean"
