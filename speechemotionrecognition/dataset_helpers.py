@@ -63,4 +63,11 @@ def get_iemocap(root):
     })
     info = DatasetInfo(description="A 🤗 datasets loader for the IEMOCAP dataset",
                        homepage="https://sail.usc.edu/iemocap/", features=features)
-    return Dataset.from_dict(_get_dict(root), info=info)
+    dataset = Dataset.from_dict(_get_dict(root), info=info)
+
+    def _merge_emotions(example):
+        if example["label"] == "exc":
+            example["label"] = "hap"
+        return example
+    dataset = dataset.map(_merge_emotions, desc="Merging emotions: excited + happy")
+    return dataset

@@ -719,9 +719,10 @@ data/
 # Trained models
 models/
 
-# Runs and logs
+# Runs, cache & logs
 runs/
 logs/
+cache/
 
 # wandb stuff
 wandb/*
