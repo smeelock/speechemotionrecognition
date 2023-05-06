@@ -4,14 +4,14 @@ import click
 import torch
 from transformers import AutoConfig, WhisperProcessor, TrainingArguments, Trainer
 
-import utils
-from constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
+from .constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
     DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS, DEFAULT_CACHE_DIR
-from dataset_helpers import get_iemocap
-from models import WhisperEncoderForSpeechClassification
-from trainers import DataCollatorCTCWithPadding
+from .dataset_helpers import get_iemocap
+from .models import WhisperEncoderForSpeechClassification
+from .trainers import DataCollatorCTCWithPadding
+from .utils import get_compute_metrics
 
 
 @click.command()
@@ -123,7 +123,7 @@ def main(
         model=model,
         data_collator=data_collator,
         args=training_args,
-        compute_metrics=utils.get_compute_metrics(metrics),
+        compute_metrics=get_compute_metrics(metrics),
         train_dataset=train_ds,
         eval_dataset=test_ds,
         tokenizer=processor.feature_extractor,
