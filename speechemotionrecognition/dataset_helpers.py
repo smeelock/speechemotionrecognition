@@ -4,7 +4,7 @@ from pathlib import Path
 
 from datasets import Dataset, Value, Features, ClassLabel, DatasetInfo, Audio
 
-from constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE
+from .constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE
 
 
 # inspired by https://github.com/pytorch/audio/blob/main/torchaudio/datasets/iemocap.py

@@ -4,6 +4,7 @@ from typing import Union, Optional, List, Dict
 import torch
 from transformers import ProcessorMixin
 
+
 @dataclass
 class DataCollatorCTCWithPadding:
     processor: ProcessorMixin
