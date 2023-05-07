@@ -3,7 +3,7 @@ import os
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 
 # paths
-PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_DATA_DIR = os.path.join(PACKAGE_DIR, "data/raw")
 DEFAULT_OUTPUT_DIR = os.path.join(PACKAGE_DIR, "runs/")
 DEFAULT_CACHE_DIR = os.path.join(PACKAGE_DIR, "cache/")

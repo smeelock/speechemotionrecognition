@@ -10,7 +10,7 @@ from .constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE,
 
 # inspired by https://github.com/pytorch/audio/blob/main/torchaudio/datasets/iemocap.py
 def _get_dict(path):
-    assert os.path.isdir(path), "Dataset not found."
+    assert os.path.isdir(path), f"Dataset not found at: {path}"
 
     sessions = (1, 2, 3, 4, 5)
     tmp = {}  # will contain all wav file stems

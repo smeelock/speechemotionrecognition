@@ -6,15 +6,15 @@ from datasets import DatasetDict
 from sklearn.model_selection import LeaveOneGroupOut
 from transformers import AutoConfig, TrainingArguments, Trainer, AutoProcessor
 
-from .speechemotionrecognition.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, \
+from speechemotionrecognition.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, \
     DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
     DEFAULT_METRICS, DEFAULT_CACHE_DIR, DEFAULT_DEBUG_SIZE
-from .speechemotionrecognition.dataset_helpers import load_iemocap, process_dataset
-from .speechemotionrecognition.models import WhisperEncoderForSpeechClassification
-from .speechemotionrecognition.trainers import DataCollatorCTCWithPadding
-from .speechemotionrecognition.utils import get_compute_metrics
+from speechemotionrecognition.dataset_helpers import load_iemocap, process_dataset
+from speechemotionrecognition.models import WhisperEncoderForSpeechClassification
+from speechemotionrecognition.trainers import DataCollatorCTCWithPadding
+from speechemotionrecognition.utils import get_compute_metrics
 
 
 @click.command()
@@ -28,8 +28,6 @@ from .speechemotionrecognition.utils import get_compute_metrics
 @click.option("--model-name-or-path", default=DEFAULT_WHISPER_MODEL_NAME, type=str, help="Model name or path")
 @click.option("--num-encoder-layers", default=4, type=int, help="Number of encoder layers")
 @click.option("--output-dir", default=DEFAULT_OUTPUT_DIR, type=str, help="Output directory")
-@click.option("--seed", default=DEFAULT_SEED, type=int, help="Seed")
-@click.option("--test-split-size", default=DEFAULT_TEST_SPLIT_SIZE, type=float, help="Test split size")
 @click.option("--wandb-disabled", is_flag=True, help="Disable wandb")
 @click.option("--wandb-log-model", default=DEFAULT_WANDB_LOG_MODEL, type=str, help="Wandb log model")
 @click.option("--wandb-project", default=DEFAULT_WANDB_PROJECT, type=str, help="Wandb project")
@@ -45,8 +43,6 @@ def main(
     model_name_or_path,
     num_encoder_layers,
     output_dir,
-    seed,
-    test_split_size,
     wandb_disabled,
     wandb_log_model,
     wandb_project,
@@ -85,8 +81,8 @@ def main(
 
     # dataset
     processor = AutoProcessor.from_pretrained(model_name_or_path)
-    raw_dataset = load_iemocap(data_dir)
-    dataset = process_dataset(raw_dataset, processor, model)
+    raw_dataset = load_iemocap(data_dir, cache_dir=cache_dir)
+    dataset = process_dataset(raw_dataset, processor, cache_dir=cache_dir)
 
     if debug:
         dataset = dataset.select(range(int(DEFAULT_DEBUG_SIZE * len(dataset))))
@@ -94,14 +90,14 @@ def main(
     # leave-one-speaker-out cross-validation
     logo = LeaveOneGroupOut()
     splits = logo.split(
-        X=torch.zeros(dataset["train"].num_rows),
-        y=dataset["train"]["label"],
-        groups=dataset["train"]["speaker"]
+        X=torch.zeros(len(dataset)),
+        y=dataset["label"],
+        groups=dataset["speaker"]
     )
     for train_index, test_index in splits:
         ds = DatasetDict({
-            "train": dataset["train"].select(train_index),
-            "test": dataset["train"].select(test_index)
+            "train": dataset.select(train_index),
+            "test": dataset.select(test_index)
         })
 
         # trainer
@@ -124,10 +120,8 @@ def main(
             # of slower backward pass
         )
 
-        data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
         trainer = Trainer(
             model=model,
-            data_collator=data_collator,
             args=training_args,
             compute_metrics=get_compute_metrics(metrics),
             train_dataset=ds["train"],
