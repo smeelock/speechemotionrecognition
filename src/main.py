@@ -6,14 +6,15 @@ from datasets import DatasetDict
 from sklearn.model_selection import LeaveOneGroupOut
 from transformers import AutoConfig, TrainingArguments, Trainer, AutoProcessor
 
-from .constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
+from .speechemotionrecognition.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, \
+    DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
-    DEFAULT_METRICS, DEFAULT_CACHE_DIR
-from .dataset_helpers import load_iemocap, process_dataset, get_representations
-from .models import WhisperEncoderForSpeechClassification
-from .trainers import DataCollatorCTCWithPadding
-from .utils import get_compute_metrics
+    DEFAULT_METRICS, DEFAULT_CACHE_DIR, DEFAULT_DEBUG_SIZE
+from .speechemotionrecognition.dataset_helpers import load_iemocap, process_dataset
+from .speechemotionrecognition.models import WhisperEncoderForSpeechClassification
+from .speechemotionrecognition.trainers import DataCollatorCTCWithPadding
+from .speechemotionrecognition.utils import get_compute_metrics
 
 
 @click.command()
@@ -86,6 +87,9 @@ def main(
     processor = AutoProcessor.from_pretrained(model_name_or_path)
     raw_dataset = load_iemocap(data_dir)
     dataset = process_dataset(raw_dataset, processor, model)
+
+    if debug:
+        dataset = dataset.select(range(int(DEFAULT_DEBUG_SIZE * len(dataset))))
 
     # leave-one-speaker-out cross-validation
     logo = LeaveOneGroupOut()
