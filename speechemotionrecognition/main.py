@@ -2,13 +2,15 @@ import os
 
 import click
 import torch
-from transformers import AutoConfig, WhisperProcessor, TrainingArguments, Trainer
+from datasets import DatasetDict
+from sklearn.model_selection import LeaveOneGroupOut
+from transformers import AutoConfig, TrainingArguments, Trainer, AutoProcessor
 
 from .constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, \
     DEFAULT_TEST_SPLIT_SIZE, DEFAULT_SEED, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
-    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
-    DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_METRICS, DEFAULT_CACHE_DIR
-from .dataset_helpers import get_iemocap
+    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, \
+    DEFAULT_METRICS, DEFAULT_CACHE_DIR
+from .dataset_helpers import load_iemocap, process_dataset, get_representations
 from .models import WhisperEncoderForSpeechClassification
 from .trainers import DataCollatorCTCWithPadding
 from .utils import get_compute_metrics
@@ -81,56 +83,56 @@ def main(
     model.freeze_encoder()
 
     # dataset
-    processor = WhisperProcessor.from_pretrained(model_name_or_path)
-    dataset = get_iemocap(data_dir)
-    if debug:
-        dataset = dataset.select(range(int(DEFAULT_DEBUG_SIZE * len(dataset))))
+    processor = AutoProcessor.from_pretrained(model_name_or_path)
+    raw_dataset = load_iemocap(data_dir)
+    dataset = process_dataset(raw_dataset, processor, model)
 
-    def _process(example):
-        target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
-        if hasattr(processor, "feature_encoder"):
-            target_sampling_rate = processor.feature_encoder.sampling_rate
-        example["input_features"] = processor(example["audio"]["array"],
-                                              sampling_rate=target_sampling_rate).input_features
-        return example
-
-    dataset = dataset.map(_process, desc="Processing IEMOCAP dataset", cache_file_name=f"{cache_dir}/iemocap.arrow")
-    dataset = dataset.train_test_split(test_size=test_split_size, seed=seed)
-    train_ds, test_ds = dataset['train'], dataset['test']
-
-    # trainer
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
-        gradient_accumulation_steps=1,
-        evaluation_strategy="steps",  # should enable do_eval
-        num_train_epochs=epochs,
-        learning_rate=learning_rate,
-        fp16=torch.cuda.is_available(),  # whether to use fp16 16-bit (mixed) precision training
-        # instead of 32-bit training
-        save_steps=100,
-        eval_steps=10,
-        logging_steps=50,
-        report_to=[] if wandb_disabled else ["wandb"],
-        half_precision_backend="auto",  # should be 'cuda_amp' half precision backend
-        gradient_checkpointing=True,  # use gradient checkpointing to save memory at the expense
-        # of slower backward pass
+    # leave-one-speaker-out cross-validation
+    logo = LeaveOneGroupOut()
+    splits = logo.split(
+        X=torch.zeros(dataset["train"].num_rows),
+        y=dataset["train"]["label"],
+        groups=dataset["train"]["speaker"]
     )
+    for train_index, test_index in splits:
+        ds = DatasetDict({
+            "train": dataset["train"].select(train_index),
+            "test": dataset["train"].select(test_index)
+        })
 
-    data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
-    trainer = Trainer(
-        model=model,
-        data_collator=data_collator,
-        args=training_args,
-        compute_metrics=get_compute_metrics(metrics),
-        train_dataset=train_ds,
-        eval_dataset=test_ds,
-        tokenizer=processor.feature_extractor,
-    )
+        # trainer
+        training_args = TrainingArguments(
+            output_dir=output_dir,
+            per_device_train_batch_size=batch_size,
+            per_device_eval_batch_size=batch_size,
+            gradient_accumulation_steps=1,
+            evaluation_strategy="steps",  # should enable do_eval
+            num_train_epochs=epochs,
+            learning_rate=learning_rate,
+            fp16=torch.cuda.is_available(),  # whether to use fp16 16-bit (mixed) precision training
+            # instead of 32-bit training
+            save_steps=100,
+            eval_steps=10,
+            logging_steps=50,
+            report_to=[] if wandb_disabled else ["wandb"],
+            half_precision_backend="auto",  # should be 'cuda_amp' half precision backend
+            gradient_checkpointing=True,  # use gradient checkpointing to save memory at the expense
+            # of slower backward pass
+        )
 
-    # train
-    trainer.train()
+        data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
+        trainer = Trainer(
+            model=model,
+            data_collator=data_collator,
+            args=training_args,
+            compute_metrics=get_compute_metrics(metrics),
+            train_dataset=ds["train"],
+            eval_dataset=ds["test"],
+            tokenizer=processor.feature_extractor,
+        )
+
+        # train
+        trainer.train()
 
 
 if __name__ == "__main__":
