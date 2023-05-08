@@ -97,16 +97,8 @@ def process_dataset(dataset, processor, cache_dir=DEFAULT_CACHE_DIR, filename="i
     if hasattr(processor, "feature_encoder"):
         target_sampling_rate = processor.feature_encoder.sampling_rate
 
-    # first map to array (no cache)
-    def _map_to_array(batch):
-        batch["speech"] = batch["audio"]["array"]
-        return batch
-
-    dataset = dataset.map(_map_to_array, desc="Map to array", remove_columns=["audio"])
-
-    # then process
     def _process(batch):
-        inputs = processor(batch["speech"], sampling_rate=target_sampling_rate, return_tensors="pt", padding=True)
+        inputs = processor(batch["audio"]["array"], sampling_rate=target_sampling_rate, return_tensors="pt")
         if "input_features" in inputs:  # whisper
             batch["input_features"] = inputs.input_features[0]
         elif "input_values" in inputs:  # wav2vec2
@@ -114,7 +106,7 @@ def process_dataset(dataset, processor, cache_dir=DEFAULT_CACHE_DIR, filename="i
         return batch
 
     description = f"Processing IEMOCAP dataset with {type(processor).__name__}"
-    args = {"function": _process, "desc": description, "remove_columns": ["speech"]}
+    args = {"function": _process, "desc": description, "remove_columns": ["audio"]}
     if cache_dir:
         args["cache_file_name"] = os.path.join(cache_dir, filename)
     return dataset.map(**args)
