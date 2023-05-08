@@ -1,4 +1,5 @@
 import os
+import tqdm
 
 import click
 import torch
@@ -72,13 +73,6 @@ def main(
     )
     setattr(config, "num_encoder_layers", num_encoder_layers)
 
-    # model
-    model = WhisperEncoderForSpeechClassification.from_pretrained(
-        model_name_or_path,
-        config=config
-    )
-    model.freeze_encoder()
-
     # dataset
     processor = AutoProcessor.from_pretrained(model_name_or_path)
     raw_dataset = load_iemocap(data_dir, cache_dir=cache_dir)
@@ -94,11 +88,18 @@ def main(
         y=dataset["label"],
         groups=dataset["speaker"]
     )
-    for train_index, test_index in splits:
+    for train_index, test_index in tqdm(splits):
         ds = DatasetDict({
             "train": dataset.select(train_index),
             "test": dataset.select(test_index)
         })
+
+        # model
+        model = WhisperEncoderForSpeechClassification.from_pretrained(
+            model_name_or_path,
+            config=config
+        )
+        model.freeze_encoder()
 
         # trainer
         training_args = TrainingArguments(
