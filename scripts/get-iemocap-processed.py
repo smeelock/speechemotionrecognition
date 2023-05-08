@@ -9,7 +9,9 @@ args = {
     "project": "iemocap",
     "job_type": "process",
 }
-cache_dir = "../cache/"
+package_dir = os.getcwd()
+cache_dir = package_dir + "/cache/"
+data_dir = package_dir + "/data/raw/IEMOCAP"
 filename_template = "iemocap_{}_processed.arrow"
 model_names = ["openai/whisper-base", "facebook/wav2vec2-base-960h"]
 
