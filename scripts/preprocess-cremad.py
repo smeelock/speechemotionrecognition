@@ -5,11 +5,11 @@ A script to preprocess the CREMA-D dataset.
 import argparse
 import os
 from pathlib import Path
-from tqdm import tqdm
 
 import pandas as pd
 from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
+from tqdm import tqdm
 
 # ========= Configuration =========
 DEFAULT_SOURCE_DIR = '../data/raw/CREMA-D'

@@ -70,7 +70,7 @@ class WhisperEncoderAsFeatureExtractor(WhisperPreTrainedModel):
 
         # only keep first n encoding layers
         self.feature_extractor.layers = self.feature_extractor.layers[:config.num_encoder_layers]
-        
+
         self.init_weights()
 
     def forward(self,

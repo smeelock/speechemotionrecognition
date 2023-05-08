@@ -29,4 +29,3 @@ for model_name in model_names:
 
         artifact.add_file(local_path=os.path.join(cache_dir, filename), name="iemocap_processed.arrow")
         run.log_artifact(artifact)
-

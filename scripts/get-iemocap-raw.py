@@ -1,7 +1,6 @@
 import os
 
 import wandb
-
 from speechemotionrecognition.dataset_helpers import load_iemocap
 
 args = {
@@ -19,4 +18,3 @@ with wandb.init(**args) as run:
     dataset = load_iemocap(data_dir, cache_dir=cache_dir, filename=filename)
     artifact.add_file(local_path=os.path.join(cache_dir, filename), name=filename)
     run.log_artifact(artifact)
-
