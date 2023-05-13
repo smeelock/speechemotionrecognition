@@ -80,7 +80,6 @@ class CustomIEMOCAP(torch.utils.data.Dataset):
 iemocap = IEMOCAP(root=data_path)  # in function, path = root / "IEMOCAP"
 iemocap = Subset(iemocap, range(int(debug_size * len(iemocap))))
 
-
 # ========= Extract features =========
 dataset = CustomIEMOCAP(data=iemocap, processor=processor, encoder=model)
 
@@ -91,4 +90,3 @@ with wandb.init(project="huggingface") as run:
     artifact = wandb.Artifact("whisper-encoded-iemocap-features", type="dataset")
     artifact.add_file(os.path.join(base_dir, "data/processed/whisper-encoded-iemocap-features.pt"))
     run.log_artifact(artifact)
-

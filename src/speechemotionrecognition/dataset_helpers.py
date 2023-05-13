@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 from datasets import Dataset, Value, Features, ClassLabel, DatasetInfo, Audio
 
-from .constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_CACHE_DIR
+from .constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_BATCH_SIZE
 
 
 # inspired by https://github.com/pytorch/audio/blob/main/torchaudio/datasets/iemocap.py
@@ -53,7 +53,7 @@ def _get_dict(path):
     return {"audio": paths, "path": paths, "label": labels, "speaker": speakers}
 
 
-def get_iemocap(root, processor, model, cache_dir=DEFAULT_CACHE_DIR):
+def get_iemocap(root, processor, model):
     """Get the IEMOCAP dataset.
     This functions wraps the following steps:
     1. Load the raw dataset
@@ -61,12 +61,12 @@ def get_iemocap(root, processor, model, cache_dir=DEFAULT_CACHE_DIR):
     3. Get the representations
     """
     raw_dataset = load_iemocap(root)
-    dataset = process_dataset(raw_dataset, processor, model)
-    dataset = get_representations(dataset, model, cache_dir)
+    dataset = preprocess_dataset(raw_dataset, processor)
+    dataset = get_representations(dataset, model)
     return dataset
 
 
-def load_iemocap(root, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_raw.arrow"):
+def load_iemocap(root):
     """Get the IEMOCAP dataset."""
     root = Path(root)
     features = Features({
@@ -76,7 +76,7 @@ def load_iemocap(root, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_raw.arrow"
                             names_file=None, id=None),
         "speaker": Value(dtype='string', id=None)
     })
-    info = DatasetInfo(description="A 🤗 datasets loader for the IEMOCAP dataset",
+    info = DatasetInfo(description="A 🤗 datasets implementation of the IEMOCAP dataset",
                        homepage="https://sail.usc.edu/iemocap/", features=features)
     dataset = Dataset.from_dict(_get_dict(root), info=info)
 
@@ -86,18 +86,16 @@ def load_iemocap(root, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_raw.arrow"
         return example
 
     description = "Merging emotions `exc` & `hap`"
-    if not cache_dir:
-        return dataset.map(_merge_emotions, desc=description)
-    return dataset.map(_merge_emotions, desc=description, cache_file_name=os.path.join(cache_dir, filename))
+    return dataset.map(_merge_emotions, desc=description)
 
 
-def process_dataset(dataset, processor, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_processed.arrow"):
-    """Process a dataset with a given processor."""
+def preprocess_dataset(dataset, processor):
+    """Preprocess a dataset with a given processor."""
     target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
     if hasattr(processor, "feature_encoder"):
         target_sampling_rate = processor.feature_encoder.sampling_rate
 
-    def _process(batch):
+    def _preprocess(batch):
         inputs = processor(batch["audio"]["array"], sampling_rate=target_sampling_rate, return_tensors="pt")
         if "input_features" in inputs:  # whisper
             batch["input_features"] = inputs.input_features[0]
@@ -105,25 +103,28 @@ def process_dataset(dataset, processor, cache_dir=DEFAULT_CACHE_DIR, filename="i
             batch["input_features"] = inputs.input_values
         return batch
 
-    description = f"Processing IEMOCAP dataset with {type(processor).__name__}"
-    args = {"function": _process, "desc": description, "remove_columns": ["audio"]}
-    if cache_dir:
-        args["cache_file_name"] = os.path.join(cache_dir, filename)
-    return dataset.map(**args)
+    return dataset.map(
+        function=_preprocess,
+        desc=f"Preprocessing IEMOCAP dataset with {type(processor).__name__}",
+        remove_columns=["audio"],
+    )
 
 
-def get_representations(dataset, model, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_representations.arrow"):
+def get_representations(dataset, model):
     """Get speech representations of a dataset using a given pretrained model."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
     def _get_speech_representations(batch):
         inputs = torch.Tensor(batch["input_features"]).to(device)
-        batch["representations"] = model(inputs).last_hidden_state
+        with torch.no_grad():
+            batch["representations"] = model(inputs).last_hidden_state
         return batch
 
-    description = f"Getting IEMOCAP dataset speech representations using {type(model).__name__}"
-    args = {"function": _get_speech_representations, "desc": description, "remove_columns": ["input_features"]}
-    if cache_dir:
-        args["cache_file_name"] = os.path.join(cache_dir, filename)
-    return dataset.map(**args)
+    return dataset.map(
+        function=_get_speech_representations,
+        desc=f"Getting IEMOCAP dataset speech representations using {type(model).__name__}",
+        remove_columns=["input_features"],
+        batched=True,
+        batch_size=DEFAULT_BATCH_SIZE,
+    )

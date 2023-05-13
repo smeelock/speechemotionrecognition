@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss
-from transformers import WhisperPreTrainedModel, WhisperModel, Wav2Vec2PreTrainedModel, Wav2Vec2Model
+from transformers import WhisperPreTrainedModel, WhisperModel
 from transformers.utils import ModelOutput
 
 
@@ -19,57 +19,31 @@ class SpeechClassifierOutput(ModelOutput):
 class SpeechClassificationHead(nn.Module):
     def __init__(self, config):
         super().__init__()
+        self.mode = config.merge if hasattr(config, "merge") else "max"
+
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
         self.dropout = nn.Dropout(config.dropout)
         self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
 
-    def forward(self, features, **kwargs):
-        x = features
+    def merge_inputs(self, hidden_states):
+        if self.mode == "mean":
+            outputs = torch.mean(hidden_states, dim=1)
+        elif self.mode == "sum":
+            outputs = torch.sum(hidden_states, dim=1)
+        elif self.mode == "max":
+            outputs = torch.max(hidden_states, dim=1)[0]
+        else:
+            raise Exception(
+                "The pooling method hasn't been defined! Your pooling mode must be one of these ['mean', 'sum', 'max']")
+        return outputs
+
+    def forward(self, input_values, labels=None, return_dict=None):
+        x = self.merge_input(input_values)
         x = self.dropout(x)
         x = self.dense(x)
         x = torch.tanh(x)
         x = self.dropout(x)
-        x = self.out_proj(x)
-        return x
-
-
-class WhisperEncoderForSpeechClassification(WhisperPreTrainedModel):
-    def __init__(self, config):
-        super().__init__(config)
-        self.num_labels = config.num_labels
-        self.config = config
-
-        self.encoder = WhisperModel(config).encoder
-
-        # only keep first n encoding layers
-        self.encoder.layers = self.encoder.layers[:config.num_encoder_layers]
-        self.classifier = SpeechClassificationHead(config)
-
-        self.init_weights()
-
-    def freeze_encoder(self):
-        self.encoder._freeze_parameters()
-
-    def forward(
-        self,
-        input_features,
-        attention_mask=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        labels=None,
-    ):
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        outputs = self.encoder(
-            input_features,
-            attention_mask=attention_mask,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-        hidden_states = outputs[0]
-        hidden_states = torch.max(hidden_states, dim=1)[0]
-        logits = self.classifier(hidden_states)
+        logits = self.out_proj(x)
 
         loss = None
         if labels is not None:
@@ -77,82 +51,39 @@ class WhisperEncoderForSpeechClassification(WhisperPreTrainedModel):
             loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
 
         if not return_dict:
-            output = (logits,) + outputs[2:]
+            output = (logits,) + input_values[2:]
             return ((loss,) + output) if loss is not None else output
 
         return SpeechClassifierOutput(
             loss=loss,
             logits=logits,
-            hidden_states=outputs.hidden_states,
-            attentions=outputs.attentions,
+            hidden_states=input_values.hidden_states,
+            attentions=input_values.attentions,
         )
 
 
-class Wav2Vec2ForSpeechClassification(Wav2Vec2PreTrainedModel):
+class WhisperEncoderAsFeatureExtractor(WhisperPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
-        self.num_labels = config.num_labels
-        self.pooling_mode = config.pooling_mode
         self.config = config
+        self.feature_extractor = WhisperModel(config).encoder
 
-        self.wav2vec2 = Wav2Vec2Model(config)
-        self.classifier = SpeechClassificationHead(config)
+        # only keep first n encoding layers
+        self.feature_extractor.layers = self.feature_extractor.layers[:config.num_encoder_layers]
 
         self.init_weights()
 
-    def freeze_feature_extractor(self):
-        self.wav2vec2.feature_extractor._freeze_parameters()
-
-    def merged_strategy(
-        self,
-        hidden_states,
-        mode="mean"
-    ):
-        if mode == "mean":
-            outputs = torch.mean(hidden_states, dim=1)
-        elif mode == "sum":
-            outputs = torch.sum(hidden_states, dim=1)
-        elif mode == "max":
-            outputs = torch.max(hidden_states, dim=1)[0]
-        else:
-            raise Exception(
-                "The pooling method hasn't been defined! Your pooling mode must be one of these ['mean', 'sum', 'max']")
-
-        return outputs
-
-    def forward(
-        self,
-        input_values,
-        attention_mask=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        labels=None,
-    ):
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        outputs = self.wav2vec2(
+    def forward(self,
+                input_values,
+                attention_mask=None,
+                output_attentions=None,
+                output_hidden_states=None,
+                return_dict=None
+                ):
+        return self.feature_extractor(
             input_values,
             attention_mask=attention_mask,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
-        )
-        hidden_states = outputs[0]
-        hidden_states = self.merged_strategy(hidden_states, mode=self.pooling_mode)
-        logits = self.classifier(hidden_states)
-
-        loss = None
-        if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-
-        if not return_dict:
-            output = (logits,) + outputs[2:]
-            return ((loss,) + output) if loss is not None else output
-
-        return SpeechClassifierOutput(
-            loss=loss,
-            logits=logits,
-            hidden_states=outputs.hidden_states,
-            attentions=outputs.attentions,
         )

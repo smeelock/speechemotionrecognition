@@ -20,11 +20,13 @@ DEFAULT_IEMOCAP_DIR = os.path.join(DEFAULT_DATA_DIR, "IEMOCAP")
 DEFAULT_IEMOCAP_LABEL_LIST = ["neu", "hap", "ang", "sad", "exc"]
 DEFAULT_IEMOCAP_LABEL2ID = {label: i for i, label in enumerate(DEFAULT_IEMOCAP_LABEL_LIST)}
 DEFAULT_IEMOCAP_ID2LABEL = {i: label for i, label in enumerate(DEFAULT_IEMOCAP_LABEL_LIST)}
+DEFAULT_MAX_SHARD_SIZE = "200MB"
 
 # training
 DEFAULT_DEBUG_SIZE = 0.1  # 0.1 = 10% of the dataset
 DEFAULT_TEST_SPLIT_SIZE = 0.2
 DEFAULT_SEED = 42
+DEFAULT_BATCH_SIZE = 4
 
 # evaluation
 DEFAULT_METRICS = {
