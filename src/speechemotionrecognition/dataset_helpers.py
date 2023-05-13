@@ -118,6 +118,10 @@ def get_representations(dataset, model):
         batch["representations"] = model(inputs).last_hidden_state
         return batch
 
-    description = f"Getting IEMOCAP dataset speech representations using {type(model).__name__}"
-    args = {"function": _get_speech_representations, "desc": description, "remove_columns": ["input_features"]}
-    return dataset.map(**args)
+    return dataset.map(
+        function=_get_speech_representations,
+        desc=f"Getting IEMOCAP dataset speech representations using {type(model).__name__}",
+        remove_columns=["input_features"],
+        batched=True,
+        batch_size=DEFAULT_BATCH_SIZE,
+    )
