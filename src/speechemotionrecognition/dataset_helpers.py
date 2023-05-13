@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 from datasets import Dataset, Value, Features, ClassLabel, DatasetInfo, Audio
 
-from .constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_CACHE_DIR
+from .constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE
 
 
 # inspired by https://github.com/pytorch/audio/blob/main/torchaudio/datasets/iemocap.py
@@ -53,7 +53,7 @@ def _get_dict(path):
     return {"audio": paths, "path": paths, "label": labels, "speaker": speakers}
 
 
-def get_iemocap(root, processor, model, cache_dir=DEFAULT_CACHE_DIR):
+def get_iemocap(root, processor, model):
     """Get the IEMOCAP dataset.
     This functions wraps the following steps:
     1. Load the raw dataset
@@ -62,11 +62,11 @@ def get_iemocap(root, processor, model, cache_dir=DEFAULT_CACHE_DIR):
     """
     raw_dataset = load_iemocap(root)
     dataset = process_dataset(raw_dataset, processor, model)
-    dataset = get_representations(dataset, model, cache_dir)
+    dataset = get_representations(dataset, model)
     return dataset
 
 
-def load_iemocap(root, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_raw.arrow"):
+def load_iemocap(root):
     """Get the IEMOCAP dataset."""
     root = Path(root)
     features = Features({
@@ -86,12 +86,10 @@ def load_iemocap(root, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_raw.arrow"
         return example
 
     description = "Merging emotions `exc` & `hap`"
-    if not cache_dir:
-        return dataset.map(_merge_emotions, desc=description)
-    return dataset.map(_merge_emotions, desc=description, cache_file_name=os.path.join(cache_dir, filename))
+    return dataset.map(_merge_emotions, desc=description)
 
 
-def process_dataset(dataset, processor, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_processed.arrow"):
+def process_dataset(dataset, processor):
     """Process a dataset with a given processor."""
     target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
     if hasattr(processor, "feature_encoder"):
@@ -107,12 +105,10 @@ def process_dataset(dataset, processor, cache_dir=DEFAULT_CACHE_DIR, filename="i
 
     description = f"Processing IEMOCAP dataset with {type(processor).__name__}"
     args = {"function": _process, "desc": description, "remove_columns": ["audio"]}
-    if cache_dir:
-        args["cache_file_name"] = os.path.join(cache_dir, filename)
     return dataset.map(**args)
 
 
-def get_representations(dataset, model, cache_dir=DEFAULT_CACHE_DIR, filename="iemocap_representations.arrow"):
+def get_representations(dataset, model):
     """Get speech representations of a dataset using a given pretrained model."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
@@ -124,6 +120,4 @@ def get_representations(dataset, model, cache_dir=DEFAULT_CACHE_DIR, filename="i
 
     description = f"Getting IEMOCAP dataset speech representations using {type(model).__name__}"
     args = {"function": _get_speech_representations, "desc": description, "remove_columns": ["input_features"]}
-    if cache_dir:
-        args["cache_file_name"] = os.path.join(cache_dir, filename)
     return dataset.map(**args)
