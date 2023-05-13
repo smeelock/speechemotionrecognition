@@ -8,17 +8,16 @@ from tqdm import tqdm
 from transformers import AutoConfig, WhisperProcessor, TrainingArguments, Trainer, AutoProcessor
 
 from .speechemotionrecognition import utils
-from .speechemotionrecognition.constants import DEFAULT_CACHE_DIR
+from .speechemotionrecognition.constants import DEFAULT_CACHE_DIR, DEFAULT_BATCH_SIZE
 from .speechemotionrecognition.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, \
     DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
     DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, DEFAULT_METRICS
-from .speechemotionrecognition.dataset_helpers import load_iemocap, process_dataset
+from .speechemotionrecognition.dataset_helpers import load_iemocap, preprocess_dataset
 from .speechemotionrecognition.models import WhisperEncoderAsFeatureExtractor, SpeechClassificationHead
-from .speechemotionrecognition.trainers import DataCollatorCTCWithPadding
 
 
 @click.command()
-@click.option("--batch-size", default=4, type=int, help="Batch size")
+@click.option("--batch-size", default=DEFAULT_BATCH_SIZE, type=int, help="Batch size")
 @click.option("--cache-dir", default=DEFAULT_CACHE_DIR, type=str, help="Cache directory")
 @click.option("--data-dir", default=DEFAULT_IEMOCAP_DIR, type=str, help="Data directory")
 @click.option("--dataset", default="iemocap", type=click.Choice(["iemocap"], case_sensitive=False), help="Dataset name")
@@ -76,7 +75,7 @@ def main(
     # dataset
     processor = AutoProcessor.from_pretrained(model_name_or_path)
     raw_dataset = load_iemocap(data_dir, cache_dir=cache_dir)
-    dataset = process_dataset(raw_dataset, processor, cache_dir=cache_dir)
+    dataset = preprocess_dataset(raw_dataset, processor, cache_dir=cache_dir)
 
     if debug:
         dataset = dataset.select(range(int(DEFAULT_DEBUG_SIZE * len(dataset))))

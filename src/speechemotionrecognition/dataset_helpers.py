@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 from datasets import Dataset, Value, Features, ClassLabel, DatasetInfo, Audio
 
-from .constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE
+from .constants import DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_TARGET_SAMPLING_RATE, DEFAULT_BATCH_SIZE
 
 
 # inspired by https://github.com/pytorch/audio/blob/main/torchaudio/datasets/iemocap.py
@@ -61,7 +61,7 @@ def get_iemocap(root, processor, model):
     3. Get the representations
     """
     raw_dataset = load_iemocap(root)
-    dataset = process_dataset(raw_dataset, processor, model)
+    dataset = preprocess_dataset(raw_dataset, processor)
     dataset = get_representations(dataset, model)
     return dataset
 
@@ -76,7 +76,7 @@ def load_iemocap(root):
                             names_file=None, id=None),
         "speaker": Value(dtype='string', id=None)
     })
-    info = DatasetInfo(description="A 🤗 datasets loader for the IEMOCAP dataset",
+    info = DatasetInfo(description="A 🤗 datasets implementation of the IEMOCAP dataset",
                        homepage="https://sail.usc.edu/iemocap/", features=features)
     dataset = Dataset.from_dict(_get_dict(root), info=info)
 
@@ -89,13 +89,13 @@ def load_iemocap(root):
     return dataset.map(_merge_emotions, desc=description)
 
 
-def process_dataset(dataset, processor):
-    """Process a dataset with a given processor."""
+def preprocess_dataset(dataset, processor):
+    """Preprocess a dataset with a given processor."""
     target_sampling_rate = DEFAULT_TARGET_SAMPLING_RATE
     if hasattr(processor, "feature_encoder"):
         target_sampling_rate = processor.feature_encoder.sampling_rate
 
-    def _process(batch):
+    def _preprocess(batch):
         inputs = processor(batch["audio"]["array"], sampling_rate=target_sampling_rate, return_tensors="pt")
         if "input_features" in inputs:  # whisper
             batch["input_features"] = inputs.input_features[0]
@@ -103,9 +103,11 @@ def process_dataset(dataset, processor):
             batch["input_features"] = inputs.input_values
         return batch
 
-    description = f"Processing IEMOCAP dataset with {type(processor).__name__}"
-    args = {"function": _process, "desc": description, "remove_columns": ["audio"]}
-    return dataset.map(**args)
+    return dataset.map(
+        function=_preprocess,
+        desc=f"Preprocessing IEMOCAP dataset with {type(processor).__name__}",
+        remove_columns=["audio"],
+    )
 
 
 def get_representations(dataset, model):
