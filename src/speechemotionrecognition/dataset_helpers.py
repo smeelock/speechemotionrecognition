@@ -115,7 +115,8 @@ def get_representations(dataset, model):
 
     def _get_speech_representations(batch):
         inputs = torch.Tensor(batch["input_features"]).to(device)
-        batch["representations"] = model(inputs).last_hidden_state
+        with torch.no_grad():
+            batch["representations"] = model(inputs).last_hidden_state
         return batch
 
     return dataset.map(
