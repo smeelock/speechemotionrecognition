@@ -3,7 +3,7 @@ import os
 import wandb
 from datasets import load_from_disk
 from speechemotionrecognition.constants import DEFAULT_MAX_SHARD_SIZE
-from speechemotionrecognition.dataset_helpers import process_dataset
+from speechemotionrecognition.dataset_helpers import preprocess_dataset
 from transformers import AutoProcessor
 
 args = {
@@ -27,7 +27,7 @@ for model_name in model_names:
         artifact = wandb.Artifact(new_artifact_name, type="dataset")
 
         dataset = load_from_disk(raw_dataset_dir)
-        dataset = process_dataset(dataset, processor)
+        dataset = preprocess_dataset(dataset, processor)
         dataset.save_to_disk(savepath, max_shard_size=DEFAULT_MAX_SHARD_SIZE)
 
         artifact.add_dir(local_path=savepath)
