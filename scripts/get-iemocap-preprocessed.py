@@ -11,7 +11,7 @@ args = {
     "job_type": "preprocess",
 }
 package_dir = os.getcwd()
-save_dir_template = package_dir + "/data/processed/iemocap/{}"
+save_dir_template = package_dir + "/data/preprocessed/iemocap/{}"
 model_names = ["openai/whisper-base", "facebook/wav2vec2-base-960h"]
 
 for model_name in model_names:
@@ -23,7 +23,7 @@ for model_name in model_names:
         input_artifact_name = f"iemocap/raw:latest"
         raw_dataset_dir = run.use_artifact(input_artifact_name).download()
 
-        new_artifact_name = f"processed-{processor_name}"
+        new_artifact_name = f"preprocessed-{processor_name}"
         artifact = wandb.Artifact(new_artifact_name, type="dataset")
 
         dataset = load_from_disk(raw_dataset_dir)
