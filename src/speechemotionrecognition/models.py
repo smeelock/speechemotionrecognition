@@ -19,6 +19,7 @@ class SpeechClassifierOutput(ModelOutput):
 class SpeechClassificationHead(nn.Module):
     def __init__(self, config):
         super().__init__()
+        self.config = config
         self.mode = config.merge if hasattr(config, "merge") else "max"
 
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
@@ -37,8 +38,8 @@ class SpeechClassificationHead(nn.Module):
                 "The pooling method hasn't been defined! Your pooling mode must be one of these ['mean', 'sum', 'max']")
         return outputs
 
-    def forward(self, input_values, labels=None, return_dict=None):
-        x = self.merge_input(input_values)
+    def forward(self, input_values, labels=None):
+        x = self.merge_inputs(input_values)
         x = self.dropout(x)
         x = self.dense(x)
         x = torch.tanh(x)
@@ -48,17 +49,11 @@ class SpeechClassificationHead(nn.Module):
         loss = None
         if labels is not None:
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-
-        if not return_dict:
-            output = (logits,) + input_values[2:]
-            return ((loss,) + output) if loss is not None else output
+            loss = loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
 
         return SpeechClassifierOutput(
             loss=loss,
-            logits=logits,
-            hidden_states=input_values.hidden_states,
-            attentions=input_values.attentions,
+            logits=logits
         )
 
 
