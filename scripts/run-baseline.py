@@ -17,7 +17,7 @@ from transformers import AutoModel, AutoProcessor, PretrainedConfig, PreTrainedM
 from transformers.utils import ModelOutput, PaddingStrategy
 
 # configuration
-model_names = ("facebook/wav2vec2-base-960h", "facebook/wav2vec2-conformer-rel-pos-large")
+model_names = ("openai/whisper-tiny", "facebook/wav2vec2-conformer-rel-pos-large")
 hidden_dim = 512
 num_heads = 3
 
@@ -61,7 +61,12 @@ for name in model_names:
     models[name] = AutoModel.from_pretrained(name).to(device)
     if 'whisper' in name:
         models[name] = models[name].encoder
-    processors[name] = AutoProcessor.from_pretrained(name)
+    try:
+        processors[name] = AutoProcessor.from_pretrained(name)
+    except OSError as e:
+        print("Catched: ", e)
+        print("Loading wav2vec2 processor")
+        processors[name] = AutoProcessor.from_pretrained("facebook/wav2vec2-base-960h")
 
 # load dataset
 artifact = api.artifact("tsinghua-ser/iemocap/raw:v3")
