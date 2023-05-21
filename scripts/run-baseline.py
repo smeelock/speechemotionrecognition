@@ -96,7 +96,7 @@ def _process(batch):
                 raise NotImplementedError("found none of: ['input_values', 'input_features']")
             input_values = input_values.to(device)
             # `input_values` in batch is replaced with the name of the model
-            batch[model_name_clean] = model(input_values).last_hidden_state.to('cpu')
+            batch[model_name_clean] = model(input_values).last_hidden_state
     return batch
 
 
@@ -127,7 +127,7 @@ class FusionModelOutput(ModelOutput):
 
 
 class FusionConfig(PretrainedConfig):
-    def __init__(self, embed_dim=512, hidden_dim=1152, num_classes=4, num_heads=1, **kwargs):
+    def __init__(self, embed_dim=1152, hidden_dim=512, num_classes=4, num_heads=1, **kwargs):
         super().__init__(**kwargs)
         self.embed_dim = embed_dim
         self.hidden_dim = hidden_dim
@@ -205,12 +205,12 @@ class FusionDataCollator(DataCollatorWithPadding):
 
     def __call__(self, features):
         labels = torch.tensor([feature['label'] for feature in features], dtype=torch.long, device=device)
-        rep1s = [torch.tensor(feature['rep1'], device=device).squeeze() for feature in features]
-        rep2s = [torch.tensor(feature['rep2'], device=device).squeeze() for feature in features]
+        rep1s = [feature['rep1'][0] for feature in features]  # [0] equivalent to .squeeze()
+        rep2s = [feature['rep2'][0] for feature in features]  # [0] equivalent to .squeeze()
 
         # Pad sequences independently
-        padded_rep1s = pad_sequence(rep1s, batch_first=True)  # [n_samples, time, embed_dim]
-        padded_rep2s = pad_sequence(rep2s, batch_first=True)  # [n_samples, time, embed_dim]
+        padded_rep1s = pad_sequence(rep1s, batch_first=True).to(device)  # [n_samples, time, embed_dim]
+        padded_rep2s = pad_sequence(rep2s, batch_first=True).to(device)  # [n_samples, time, embed_dim]
 
         # Apply the fusion strategy
         if self.fusion_strategy == 'padding':
@@ -266,7 +266,8 @@ collated = data_collator(examples)
 print("collated sizes: ", collated['input_values'].shape)
 embed_dim = collated['input_values'].size(-1)
 
-fusion_config = FusionConfig(embed_dim=embed_dim, hidden_dim=hidden_dim, num_heads=num_heads, num_classes=len(label_list))
+fusion_config = FusionConfig(embed_dim=embed_dim, hidden_dim=hidden_dim, num_heads=num_heads,
+                             num_classes=len(label_list))
 
 for train_index, test_index in tqdm(splits):
     args = {
