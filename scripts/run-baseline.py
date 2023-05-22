@@ -18,7 +18,7 @@ from transformers import AutoModel, AutoProcessor, PretrainedConfig, PreTrainedM
 from transformers.utils import ModelOutput, PaddingStrategy
 
 # configuration
-model_names = ("openai/whisper-tiny", "facebook/wav2vec2-conformer-rel-pos-large")
+model_names = ("facebook/wav2vec2-base-960h", "facebook/wav2vec2-conformer-rel-pos-large")
 hidden_dim = 512
 num_heads = 1
 
@@ -274,7 +274,8 @@ fusion_config = FusionConfig(embed_dim=embed_dim, hidden_dim=hidden_dim, num_hea
 for train_index, test_index in tqdm(splits):
     args = {
         "project": os.environ["WANDB_PROJECT"],
-        "tags": ["baseline", *model_names]
+        "tags": ["baseline", *model_names],
+        "group": "X".join([_clean_model_name(model_names)])
     }
     with wandb.init(**args) as run:
         ds = DatasetDict({
