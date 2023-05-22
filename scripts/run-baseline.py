@@ -19,7 +19,7 @@ from transformers.utils import ModelOutput, PaddingStrategy
 # configuration
 model_names = ("openai/whisper-tiny", "facebook/wav2vec2-conformer-rel-pos-large")
 hidden_dim = 512
-num_heads = 3
+num_heads = 1
 
 cache_dir = os.path.join(os.getcwd(), "cache")
 output_dir = os.path.join(os.getcwd(), "runs")
@@ -42,7 +42,7 @@ id2label = {i: label for i, label in enumerate(label_list)}
 
 # wandb
 api = wandb.Api()
-os.environ["WANDB_PROJECT"] = "uncategorized"
+os.environ["WANDB_PROJECT"] = "representation-fusion"
 os.environ["WANDB_WATCH"] = "all"
 os.environ["WANDB_LOG_MODEL"] = "checkpoint"
 
@@ -205,8 +205,8 @@ class FusionDataCollator(DataCollatorWithPadding):
 
     def __call__(self, features):
         labels = torch.tensor([feature['label'] for feature in features], dtype=torch.long, device=device)
-        rep1s = [feature['rep1'][0] for feature in features]  # [0] equivalent to .squeeze()
-        rep2s = [feature['rep2'][0] for feature in features]  # [0] equivalent to .squeeze()
+        rep1s = [torch.tensor(feature['rep1'], device=device).squeeze() for feature in features]
+        rep2s = [torch.tensor(feature['rep2'], device=device).squeeze() for feature in features]
 
         # Pad sequences independently
         padded_rep1s = pad_sequence(rep1s, batch_first=True).to(device)  # [n_samples, time, embed_dim]
