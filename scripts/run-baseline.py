@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import wandb
 from datasets import load_from_disk, DatasetDict
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
-from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.model_selection import LeavePGroupsOut
 from speechemotionrecognition import utils
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
@@ -29,6 +29,7 @@ epochs = 5
 learning_rate = 5e-5
 debug_size = 0.001
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+n_lpgo_cv_groups = 3 # leave 3 groups out -> only 4 models are trained bc there are 10 speakers in total
 
 metrics = {
     "unweighted_accuracy": accuracy_score,
@@ -243,8 +244,8 @@ class FusionDataCollator(DataCollatorWithPadding):
 
 
 # leave-one-speaker-out cross-validation
-logo = LeaveOneGroupOut()
-splits = logo.split(
+lpgo = LeavePGroupsOut(n_groups=n_lpgo_cv_groups)
+splits = lpgo.split(
     X=torch.zeros(len(dataset)),
     y=dataset["label"],
     groups=dataset["speaker"]
