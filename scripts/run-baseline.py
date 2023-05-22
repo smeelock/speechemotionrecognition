@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
@@ -280,6 +281,11 @@ for train_index, test_index in tqdm(splits):
             "train": dataset.select(train_index),
             "test": dataset.select(test_index)
         })
+
+        _get_speakers = lambda s: np.unique(ds[s]['speaker'])
+        print("train speakers: ", _get_speakers("train"))
+        print("test speakers: ", _get_speakers("test"))
+
 
         # model
         fusion_model = FusionModel(fusion_config)
