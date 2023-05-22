@@ -271,7 +271,8 @@ fusion_config = FusionConfig(embed_dim=embed_dim, hidden_dim=hidden_dim, num_hea
 
 for train_index, test_index in tqdm(splits):
     args = {
-        "project": os.environ["WANDB_PROJECT"]
+        "project": os.environ["WANDB_PROJECT"],
+        "tags": ["baseline", *model_names]
     }
     with wandb.init(**args) as run:
         ds = DatasetDict({
