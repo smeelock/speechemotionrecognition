@@ -53,7 +53,7 @@ def _clean_model_name(model_name):
     return model_name.split('/')[-1]
 
 
-# initialize configs, models & processors
+# initialize models & processors
 models = {}
 processors = {}
 for name in model_names:
@@ -76,8 +76,8 @@ raw_dataset_dir = artifact.download()
 raw_dataset = load_from_disk(raw_dataset_dir)
 
 # /!\ uncomment the following line for production
-n = int(debug_size * len(raw_dataset))
-raw_dataset = raw_dataset.select(torch.randint(low=0, high=len(raw_dataset), size=(n,)))  # for debug only
+# n = int(debug_size * len(raw_dataset))
+# raw_dataset = raw_dataset.select(torch.randint(low=0, high=len(raw_dataset), size=(n,)))  # for debug only
 
 
 def _process(batch):
@@ -275,7 +275,7 @@ for train_index, test_index in tqdm(splits):
     args = {
         "project": os.environ["WANDB_PROJECT"],
         "tags": ["baseline", *model_names],
-        "group": "X".join([_clean_model_name(model_names)])
+        "group": "X".join([_clean_model_name(m) for m in model_names])
     }
     with wandb.init(**args) as run:
         ds = DatasetDict({
