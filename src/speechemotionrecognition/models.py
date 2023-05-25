@@ -17,21 +17,22 @@ class SpeechClassifierOutput(ModelOutput):
 
 
 class SpeechClassificationHead(nn.Module):
-    def __init__(self, config):
+    def __init__(self, embed_dim, hidden_dim, num_classes, merge_strategy="max"):
         super().__init__()
-        self.config = config
-        self.mode = config.merge if hasattr(config, "merge") else "max"
+        self.merge_strategy = merge_strategy
 
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.dropout = nn.Dropout(config.dropout)
-        self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
+        self.classifier = nn.Sequential(
+            nn.Linear(in_features=embed_dim, out_features=hidden_dim),
+            nn.Tanh(),
+            nn.Linear(in_features=hidden_dim, out_features=num_classes),
+        )
 
     def merge_inputs(self, hidden_states):
-        if self.mode == "mean":
+        if self.merge_strategy == "mean":
             outputs = torch.mean(hidden_states, dim=1)
-        elif self.mode == "sum":
+        elif self.merge_strategy == "sum":
             outputs = torch.sum(hidden_states, dim=1)
-        elif self.mode == "max":
+        elif self.merge_strategy == "max":
             outputs = torch.max(hidden_states, dim=1)[0]
         else:
             raise Exception(
@@ -40,11 +41,7 @@ class SpeechClassificationHead(nn.Module):
 
     def forward(self, input_values, labels=None):
         x = self.merge_inputs(input_values)
-        x = self.dropout(x)
-        x = self.dense(x)
-        x = torch.tanh(x)
-        x = self.dropout(x)
-        logits = self.out_proj(x)
+        logits = self.classifier(x)
 
         loss = None
         if labels is not None:
