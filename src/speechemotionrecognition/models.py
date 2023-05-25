@@ -125,11 +125,11 @@ class BaselineFusionModel(PreTrainedModel):
         if hasattr(input_values, "last_hidden_state"):
             input_values = input_values['last_hidden_state']
 
-        attended, attn_weights = self.self_attention(input_values, input_values, input_values)
+        attn, attn_weights = self.self_attention(input_values, input_values, input_values)
 
-        hidden_states = attended.clone()  # Cloning to ensure it doesn't affect subsequent computations
-        attended = attended.mean(dim=1)  # mean pooling on time dimension
-        logits = self.classifier(attended)  # classify without softmax
+        hidden_states = attn.clone()  # Cloning to ensure it doesn't affect subsequent computations
+        attn = attn.mean(dim=1)  # mean pooling on time dimension
+        logits = self.classifier(attn)  # classify without softmax
 
         loss = None
         if labels is not None:
