@@ -36,10 +36,9 @@ class DataCollatorCTCWithPadding:
         return batch
 
 
-class FusionModelDataCollator(DataCollatorWithPadding):
+class FusionDataCollator(DataCollatorWithPadding):
     def __init__(
         self,
-        fusion_strategy,
         tokenizer: PreTrainedTokenizerBase = None,
         padding: Union[bool, str, PaddingStrategy] = True,
         max_length: Optional[int] = None,
@@ -47,39 +46,66 @@ class FusionModelDataCollator(DataCollatorWithPadding):
         return_tensors: str = 'pt'
     ):
         super().__init__(tokenizer, padding, max_length, pad_to_multiple_of, return_tensors)
-        self.fusion_strategy = fusion_strategy
 
-    def __call__(self, features):
-        labels = torch.tensor([feature['label'] for feature in features], dtype=torch.long)
+    def prepare(self, features):
         rep1s = [torch.tensor(feature['rep1']).squeeze() for feature in features]
         rep2s = [torch.tensor(feature['rep2']).squeeze() for feature in features]
 
         # Pad sequences independently
-        padded_rep1s = pad_sequence(rep1s, batch_first=True)  # [n_samples, time, embed_dim]
-        padded_rep2s = pad_sequence(rep2s, batch_first=True)  # [n_samples, time, embed_dim]
+        r1 = pad_sequence(rep1s, batch_first=True)  # [n_samples, time, embed_dim]
+        r2 = pad_sequence(rep2s, batch_first=True)  # [n_samples, time, embed_dim]
 
-        # Apply the fusion strategy
-        if self.fusion_strategy == 'max_pooling':
-            _pool = lambda x, size: F.adaptive_max_pool1d(x.permute(0, 2, 1), output_size=size)
-            time_dim1 = padded_rep1s.size(1)
-            time_dim2 = padded_rep2s.size(1)
+        # Apply max_pooling fusion strategy
+        _pool = lambda x, size: F.adaptive_max_pool1d(x.permute(0, 2, 1), output_size=size)
+        time_dim1 = r1.size(1)
+        time_dim2 = r2.size(1)
 
-            if time_dim1 == time_dim2:
-                collated = torch.cat([padded_rep1s, padded_rep2s], dim=-1)
-            elif time_dim1 > time_dim2:
-                pooled_rep1 = _pool(padded_rep1s, time_dim2)
-                pooled_rep1 = pooled_rep1.permute(0, 2, 1)
-                collated = torch.cat([pooled_rep1, padded_rep2s], dim=-1)
-            elif time_dim2 > time_dim1:
-                pooled_rep2 = _pool(padded_rep2s, time_dim1)
-                pooled_rep2 = pooled_rep2.permute(0, 2, 1)
-                collated = torch.cat([padded_rep1s, pooled_rep2], dim=-1)
+        if time_dim1 > time_dim2:
+            r1 = _pool(r1, time_dim2).permute(0, 2, 1)
+        elif time_dim2 > time_dim1:
+            r2 = _pool(r2, time_dim1).permute(0, 2, 1)
 
-        else:
-            raise ValueError("Invalid fusion strategy")
+        return r1, r2
+
+
+class BaselineFusionModelDataCollator(FusionDataCollator):
+    def __call__(self, features):
+        labels = torch.tensor([feature['label'] for feature in features], dtype=torch.long)
+
+        # prepare representations
+        r1, r2 = self.prepare(features)
+
+        # concat representations for baseline fusion model
+        collated = torch.cat((r1, r2), dim=-1)
 
         batch = {
             'labels': labels,
             'input_values': collated,
+        }
+        return batch
+
+
+class FusionModelDataCollator(FusionDataCollator):
+    def __call__(self, features):
+        labels = torch.tensor([feature['label'] for feature in features], dtype=torch.long)
+
+        # prepare representations
+        r1, r2 = self.prepare(features)
+
+        # concat representations for baseline fusion model
+        collated = torch.cat((r1, r2), dim=-1)
+
+        # fix embedding dimensions of rep1 & rep2
+        embed_dim1 = r1.size(2)
+        embed_dim2 = r2.size(2)
+        if embed_dim1 > embed_dim2:
+            r2 = torch.tile(r2, (1, 1, embed_dim1 // embed_dim2))
+        elif embed_dim2 > embed_dim1:
+            r1 = torch.tile(r1, (1, 1, embed_dim2 // embed_dim1))
+        assert r1.size(2) == r2.size(2)
+
+        batch = {
+            'labels': labels,
+            'input_values': (r1, r2)  # tuple
         }
         return batch
