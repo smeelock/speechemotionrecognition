@@ -18,7 +18,7 @@ from transformers import AutoModel, AutoProcessor, TrainingArguments, Trainer, P
 from transformers.utils import ModelOutput
 
 # configuration
-model_names = ("facebook/wav2vec2-base-960h", "facebook/wav2vec2-conformer-rel-pos-large")
+model_names = ("openai/whisper-tiny", "facebook/wav2vec2-base-960h")
 hidden_dim = 512
 num_heads = 1
 
