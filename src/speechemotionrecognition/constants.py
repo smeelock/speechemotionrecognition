@@ -1,6 +1,6 @@
 import os
 
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, confusion_matrix
 
 # paths
 PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,7 +33,8 @@ DEFAULT_METRICS = {
     "unweighted_accuracy": accuracy_score,
     "weighted_accuracy": balanced_accuracy_score,
     "micro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="micro"),
-    "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro")
+    "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro"),
+    "confusion_matrix": confusion_matrix
 }
 
 # models
