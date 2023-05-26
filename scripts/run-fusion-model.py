@@ -9,7 +9,6 @@ import transformers
 import wandb
 from datasets import load_from_disk, DatasetDict
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
-from sklearn.model_selection import LeavePGroupsOut
 from speechemotionrecognition import utils
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
@@ -31,7 +30,7 @@ epochs = 5
 learning_rate = 5e-5
 debug_size = 0.001
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-n_lpgo_cv_groups = 3  # leave 3 groups out -> only 4 models are trained bc there are 10 speakers in total
+n_cv_groups = 3  # leave 3 groups out -> only 4 models are trained bc there are 10 speakers in total
 
 metrics = {
     "unweighted_accuracy": accuracy_score,
@@ -245,7 +244,6 @@ class FusionDataCollator(DataCollatorWithPadding):
             rep1s = torch.tile(rep1s, (1, 1, embed_dim2 // embed_dim1))
         assert rep1s.size(2) == rep2s.size(2)
 
-
         batch = {
             'labels': labels,
             'input_values': (rep1s, rep2s)  # tuple
@@ -253,13 +251,8 @@ class FusionDataCollator(DataCollatorWithPadding):
         return batch
 
 
-# leave-one-speaker-out cross-validation
-lpgo = LeavePGroupsOut(n_groups=n_lpgo_cv_groups)
-splits = lpgo.split(
-    X=torch.zeros(len(dataset)),
-    y=dataset["label"],
-    groups=dataset["speaker"]
-)
+# leave-one-group(of speakers)-out cross-validation
+splits = utils.get_cv_splits(dataset, n_cv_groups=n_cv_groups)
 
 # get embed dim (using actual vectors)
 train_idx, test_idx = next(splits)

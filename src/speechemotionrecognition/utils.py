@@ -19,3 +19,16 @@ def get_fusion_model_embed_dim(dataset, data_collator):
     examples = [dataset[0], dataset[1], dataset[2]]
     collated = data_collator(examples)
     return collated['input_values'].size(-1)
+
+
+def get_cv_splits(dataset, n_cv_groups=3):
+    assert "speaker" in dataset.columns, "dataset must have a `speaker` column"
+    assert "label" in dataset.columns, "dataset must have a `label` column"
+
+    speakers = dataset["speaker"].unique()
+    for i in range(0, len(speakers), n_cv_groups):
+        test_speakers = speakers[i:i + n_cv_groups]
+        yield (
+            np.isin(dataset["speaker"], test_speakers, assume_unique=True),
+            np.isin(dataset["speaker"], test_speakers, assume_unique=True, invert=True)
+        )
