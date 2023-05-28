@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import transformers
 import wandb
 from datasets import load_from_disk, DatasetDict
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, confusion_matrix
 from speechemotionrecognition import utils
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
@@ -30,13 +30,14 @@ epochs = 5
 learning_rate = 5e-5
 debug_size = 0.001
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-n_cv_groups = 3  # leave 3 groups out -> only 4 models are trained bc there are 10 speakers in total
+n_cv_groups = 4  # leave 3 groups out -> only 4 models are trained bc there are 10 speakers in total
 
 metrics = {
     "unweighted_accuracy": accuracy_score,
     "weighted_accuracy": balanced_accuracy_score,
     "micro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="micro"),
-    "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro")
+    "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro"),
+    "confusion_matrix": confusion_matrix
 }
 label_list = ["neu", "hap", "ang", "sad", "exc"]  # exc & hap are merged together
 label2id = {label: i for i, label in enumerate(label_list)},
@@ -179,7 +180,7 @@ class FusionModel(PreTrainedModel):
 
         return FusionModelOutput(
             loss=loss,
-            logits=logits,
+            last_hidden_state=logits,
             hidden_states=None,
             attentions=None,
         )
@@ -242,7 +243,7 @@ class FusionDataCollator(DataCollatorWithPadding):
             rep2s = torch.tile(rep2s, (1, 1, embed_dim1 // embed_dim2))
         elif embed_dim2 > embed_dim1:
             rep1s = torch.tile(rep1s, (1, 1, embed_dim2 // embed_dim1))
-        assert rep1s.size(2) == rep2s.size(2)
+        assert rep1s.size(2) == rep2s.size(2), f"invalid sizes: {rep1s.size(2)} vs {rep2s.size(2)}"
 
         batch = {
             'labels': labels,
@@ -267,16 +268,20 @@ print("representation sizes: ", rep1.shape, rep2.shape)
 data_collator = FusionDataCollator(fusion_strategy="max_pooling")
 examples = [ds['train'][0], ds['train'][1], ds['train'][2]]
 collated = data_collator(examples)
-print("collated sizes: ", collated['input_values'].shape)
-embed_dim = collated['input_values'].size(-1)
+print("collated sizes: ", collated['input_values'][0].shape)
+embed_dim = collated['input_values'][0].size(-1)
 
-fusion_config = FusionConfig(embed_dim=embed_dim, hidden_dim=hidden_dim, num_heads=num_heads,
-                             num_classes=len(label_list))
+fusion_config = FusionConfig(
+    embed_dim=embed_dim,
+    hidden_dim=hidden_dim,
+    num_heads=num_heads,
+    num_classes=len(label_list)
+)
 
 for train_index, test_index in tqdm(splits):
     args = {
         "project": os.environ["WANDB_PROJECT"],
-        "tags": ["baseline", *model_names],
+        "tags": ["fusion", *model_names],
         "group": "X".join([_clean_model_name(m) for m in model_names])
     }
     with wandb.init(**args) as run:
