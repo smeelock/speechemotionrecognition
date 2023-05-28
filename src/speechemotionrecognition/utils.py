@@ -23,9 +23,9 @@ def get_fusion_model_embed_dim(dataset, data_collator):
 
 def get_cv_splits(dataset, n_cv_groups=3):
     speakers = np.unique(dataset["speaker"])
+    indices = np.arange(len(dataset))
     for i in range(0, len(speakers), n_cv_groups):
         test_speakers = speakers[i:i + n_cv_groups]
-        yield (
-            np.isin(dataset["speaker"], test_speakers, assume_unique=True),
-            np.isin(dataset["speaker"], test_speakers, assume_unique=True, invert=True)
-        )
+        test_mask = np.isin(dataset["speaker"], test_speakers, assume_unique=True)
+        train_mask = ~test_mask
+        yield indices[train_mask], indices[test_mask]
