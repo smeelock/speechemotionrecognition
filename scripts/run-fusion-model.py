@@ -240,9 +240,9 @@ class FusionDataCollator(DataCollatorWithPadding):
         embed_dim1 = rep1s.size(2)
         embed_dim2 = rep2s.size(2)
         if embed_dim1 > embed_dim2:
-            rep2s = torch.tile(rep2s, (1, 1, embed_dim1 // embed_dim2))
+            rep2s = torch.tile(rep2s, (1, 1, embed_dim1 // embed_dim2 + 1))[:,:,:embed_dim1]
         elif embed_dim2 > embed_dim1:
-            rep1s = torch.tile(rep1s, (1, 1, embed_dim2 // embed_dim1))
+            rep1s = torch.tile(rep1s, (1, 1, embed_dim2 // embed_dim1 + 1))[:,:,:embed_dim2]
         assert rep1s.size(2) == rep2s.size(2), f"invalid sizes: {rep1s.size(2)} vs {rep2s.size(2)}"
 
         batch = {
