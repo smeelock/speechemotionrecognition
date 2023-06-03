@@ -37,7 +37,7 @@ metrics = {
     "weighted_accuracy": balanced_accuracy_score,
     "micro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="micro"),
     "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro"),
-    "confusion_matrix": confusion_matrix
+    "confusion_matrix": lambda y_true, y_pred: confusion_matrix(y_true, y_pred).tolist()
 }
 label_list = ["neu", "hap", "ang", "sad", "exc"]  # exc & hap are merged together
 label2id = {label: i for i, label in enumerate(label_list)},
