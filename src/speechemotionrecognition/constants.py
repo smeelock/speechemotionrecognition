@@ -1,6 +1,6 @@
 import os
 
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, confusion_matrix
 
 # paths
 PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,9 +33,18 @@ DEFAULT_METRICS = {
     "unweighted_accuracy": accuracy_score,
     "weighted_accuracy": balanced_accuracy_score,
     "micro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="micro"),
-    "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro")
+    "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro"),
+    "confusion_matrix": confusion_matrix
 }
 
 # models
-DEFAULT_WHISPER_MODEL_NAME = "openai/whisper-base"
+DEFAULT_HUBERT_MODEL_NAME = "facebook/hubert-large-ll60k"
 DEFAULT_WAV2VEC2_MODEL_NAME = "facebook/wav2vec2-base-960h"
+DEFAULT_WAV2VEC2_XLSR_MODEL_NAME = "facebook/wav2vec2-large-xlsr-53"
+DEFAULT_WAV2VEC2_CONFORMER_MODEL_NAME = "facebook/wav2vec2-conformer-rel-pos-large"
+DEFAULT_WAVLM_MODEL_NAME = "microsoft/wavlm-large"
+DEFAULT_WHISPER_MODEL_NAME = "openai/whisper-base"
+ALL_DEFAULT_MODEL_NAMES = [
+    DEFAULT_WHISPER_MODEL_NAME, DEFAULT_WAV2VEC2_MODEL_NAME, DEFAULT_WAV2VEC2_CONFORMER_MODEL_NAME,
+    DEFAULT_WAVLM_MODEL_NAME, DEFAULT_WAV2VEC2_XLSR_MODEL_NAME, DEFAULT_HUBERT_MODEL_NAME
+]

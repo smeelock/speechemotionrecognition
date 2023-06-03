@@ -2,24 +2,22 @@ import os
 
 import click
 import torch
-from datasets import DatasetDict
+import wandb
+from datasets import DatasetDict, load_from_disk
 from sklearn.model_selection import LeaveOneGroupOut
 from tqdm import tqdm
-from transformers import AutoConfig, TrainingArguments, Trainer, AutoProcessor
+from transformers import AutoConfig, TrainingArguments, Trainer
 
 from .speechemotionrecognition import utils
-from .speechemotionrecognition.constants import DEFAULT_CACHE_DIR, DEFAULT_BATCH_SIZE
+from .speechemotionrecognition.constants import DEFAULT_BATCH_SIZE
 from .speechemotionrecognition.constants import DEFAULT_WANDB_WATCH, DEFAULT_WANDB_LOG_MODEL, \
     DEFAULT_WHISPER_MODEL_NAME, DEFAULT_OUTPUT_DIR, DEFAULT_IEMOCAP_LABEL_LIST, DEFAULT_IEMOCAP_LABEL2ID, \
-    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_IEMOCAP_DIR, DEFAULT_METRICS
-from .speechemotionrecognition.dataset_helpers import load_iemocap, preprocess_dataset
+    DEFAULT_IEMOCAP_ID2LABEL, DEFAULT_DEBUG_SIZE, DEFAULT_WANDB_PROJECT, DEFAULT_METRICS
 from .speechemotionrecognition.models import SpeechClassificationHead
 
 
 @click.command()
 @click.option("--batch-size", default=DEFAULT_BATCH_SIZE, type=int, help="Batch size")
-@click.option("--cache-dir", default=DEFAULT_CACHE_DIR, type=str, help="Cache directory")
-@click.option("--data-dir", default=DEFAULT_IEMOCAP_DIR, type=str, help="Data directory")
 @click.option("--dataset", default="iemocap", type=click.Choice(["iemocap"], case_sensitive=False), help="Dataset name")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--epochs", default=2, type=int, help="Number of epochs")
@@ -33,8 +31,6 @@ from .speechemotionrecognition.models import SpeechClassificationHead
 @click.option("--wandb-watch", default=DEFAULT_WANDB_WATCH, type=str, help="Wandb watch")
 def main(
     batch_size,
-    cache_dir,
-    data_dir,
     dataset,
     debug,
     epochs,
@@ -63,6 +59,8 @@ def main(
         os.environ["WANDB_WATCH"] = wandb_watch
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 
+    api = wandb.Api()
+
     config = AutoConfig.from_pretrained(
         model_name_or_path,
         num_labels=len(label_list),
@@ -72,10 +70,18 @@ def main(
     setattr(config, "num_encoder_layers", num_encoder_layers)
     setattr(config, "merged_strategy", "max")
 
-    # dataset
-    processor = AutoProcessor.from_pretrained(model_name_or_path)
-    raw_dataset = load_iemocap(data_dir, cache_dir=cache_dir)
-    dataset = preprocess_dataset(raw_dataset, processor, cache_dir=cache_dir)
+    # load dataset
+    artifact_name = "{username}/{project}/{artifact_name}:{version}".format(
+        username="tsinghua-ser",
+        project="iemocap",
+        artifact_name=f"representations-{model_name_or_path.split('/')[-1]}",
+        version="v1"
+    )
+    artifact = api.artifact(artifact_name)
+    artifact_dir = artifact.download()
+
+    dataset = load_from_disk(artifact_dir)
+    dataset = dataset.rename_column("representations", "input_values")
 
     if debug:
         dataset = dataset.select(range(int(DEFAULT_DEBUG_SIZE * len(dataset))))
@@ -96,9 +102,6 @@ def main(
         # model
         model = SpeechClassificationHead(config=config)
 
-        # dataset
-        processor = AutoProcessor.from_pretrained(model_name_or_path)
-
         # trainer
         training_args = TrainingArguments(
             output_dir=output_dir,
@@ -116,8 +119,6 @@ def main(
             logging_steps=50,
             report_to=[] if wandb_disabled else ["wandb"],
             half_precision_backend="auto",  # should be 'cuda_amp' half precision backend
-            gradient_checkpointing=True,  # use gradient checkpointing to save memory at the expense
-            # of slower backward pass
         )
 
         trainer = Trainer(
@@ -126,7 +127,6 @@ def main(
             compute_metrics=utils.get_compute_metrics(metrics),
             train_dataset=ds["train"],
             eval_dataset=ds["test"],
-            tokenizer=processor.feature_extractor,
         )
 
         # train
