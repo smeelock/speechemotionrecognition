@@ -5,12 +5,14 @@ import torch
 import torch.nn.functional as F
 import wandb
 from datasets import load_from_disk, DatasetDict
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, confusion_matrix
 from sklearn.svm import SVC
 from speechemotionrecognition import utils
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 from transformers import AutoModel, AutoProcessor
+
+import gc
 
 # configuration
 model_names = ("openai/whisper-tiny", "facebook/wav2vec2-base-960h")
@@ -25,7 +27,8 @@ metrics = {
     "unweighted_accuracy": accuracy_score,
     "weighted_accuracy": balanced_accuracy_score,
     "micro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="micro"),
-    "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro")
+    "macro_f1": lambda y_true, y_pred: f1_score(y_true, y_pred, average="macro"),
+    "confusion_matrix": lambda y_true, y_pred: confusion_matrix(y_true, y_pred).tolist()
 }
 label_list = ["neu", "hap", "ang", "sad", "exc"]  # exc & hap are merged together
 label2id = {label: i for i, label in enumerate(label_list)}
@@ -93,34 +96,6 @@ def _process(batch):
     return batch
 
 
-def collate(features):
-    labels = torch.tensor([feature['label'] for feature in features], dtype=torch.long)
-    rep1s = [torch.tensor(feature['rep1']).squeeze() for feature in features]
-    rep2s = [torch.tensor(feature['rep2']).squeeze() for feature in features]
-
-    # Pad sequences independently
-    padded_rep1s = pad_sequence(rep1s, batch_first=True)  # [n_samples, time, embed_dim]
-    padded_rep2s = pad_sequence(rep2s, batch_first=True)  # [n_samples, time, embed_dim]
-
-    # Apply the fusion strategy
-    _pool = lambda x, size: F.adaptive_max_pool1d(x.permute(0, 2, 1), output_size=size)
-    time_dim1 = padded_rep1s.size(1)
-    time_dim2 = padded_rep2s.size(1)
-
-    if time_dim1 == time_dim2:
-        collated = torch.cat([padded_rep1s, padded_rep2s], dim=-1)
-    elif time_dim1 > time_dim2:
-        pooled_rep1 = _pool(padded_rep1s, time_dim2)
-        pooled_rep1 = pooled_rep1.permute(0, 2, 1)
-        collated = torch.cat([pooled_rep1, padded_rep2s], dim=-1)
-    elif time_dim2 > time_dim1:
-        pooled_rep2 = _pool(padded_rep2s, time_dim1)
-        pooled_rep2 = pooled_rep2.permute(0, 2, 1)
-        collated = torch.cat([padded_rep1s, pooled_rep2], dim=-1)
-
-    return collated, labels
-
-
 # get dataset representations from all models
 helper_name = "X".join([_clean_model_name(m) for m in models])
 description = "Processing IEMOCAP dataset with: " + \
@@ -129,11 +104,28 @@ description = "Processing IEMOCAP dataset with: " + \
 dataset = raw_dataset.map(
     function=_process,
     desc=description,
-    remove_columns=["audio"],
+    remove_columns=["audio", "path"],
     cache_file_name=os.path.join(cache_dir, f"{helper_name}/iemocap.arrow")
 )
 
 dataset = dataset.rename_columns({_clean_model_name(k): f"rep{i}" for i, k in enumerate(models.keys(), 1)})
+
+# get collated dataset
+def _collate(features):
+    r1 = torch.tensor(features['rep1']).squeeze()
+    r1, _ = torch.max(r1, dim=0) # torch.max returns a tuple
+    r2 = torch.tensor(features['rep2']).squeeze()
+    r2, _ = torch.max(r2, dim=0) # torch.max returns a tuple
+
+    features["input_values"] = torch.cat([r1, r2], dim=-1)
+    return features
+
+dataset = dataset.map(
+    function=_collate,
+    desc="Collating dataset",
+    remove_columns=["rep1", "rep2"],
+    cache_file_name=os.path.join(cache_dir, f"{helper_name}/iemocap_collated.arrow")
+)
 
 # leave-one-speaker-out cross-validation
 splits = utils.get_cv_splits(dataset, n_cv_groups=n_cv_groups)
@@ -154,12 +146,15 @@ for train_index, test_index in tqdm(splits):
         print("train speakers: ", _get_speakers("train"))
         print("test speakers: ", _get_speakers("test"))
 
-        X_train, y_train = collate(ds["train"])
-        X_test, y_test = collate(ds["test"])
+        X_train = torch.tensor(ds["train"]["input_values"])
+        y_train = torch.tensor(ds["train"]["label"])
+        X_test = torch.tensor(ds["test"]["input_values"])
+        y_test = torch.tensor(ds["test"]["label"])
 
         # model
         svm = SVC(kernel='linear', C=1.0)
         svm.fit(X_train, y_train)
 
-        for m, metric in utils.get_compute_metrics(metrics):
-            wandb.log({m: metric.compute(svm.predict(X_test), y_test)})
+        wandb.log({m: metric(svm.predict(X_test), y_test) for m, metric in metrics.items()})
+
+        gc.collect()
