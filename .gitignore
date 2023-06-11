@@ -723,6 +723,7 @@ models/
 runs/
 logs/
 cache/
+output/
 
 # wandb stuff
 wandb/*
