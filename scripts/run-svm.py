@@ -15,7 +15,7 @@ from transformers import AutoModel, AutoProcessor
 import gc
 
 # configuration
-model_names = ("openai/whisper-tiny", "facebook/wav2vec2-base-960h")
+model_names = ("openai/whisper-tiny",)
 
 cache_dir = os.path.join(os.getcwd(), "cache")
 
@@ -68,7 +68,6 @@ artifact = api.artifact("tsinghua-ser/iemocap/raw:v3")
 raw_dataset_dir = artifact.download()
 raw_dataset = load_from_disk(raw_dataset_dir)
 
-
 # /!\ uncomment the following line for production
 # n = int(debug_size * len(raw_dataset))
 # raw_dataset = raw_dataset.select(torch.randint(low=0, high=len(raw_dataset), size=(n,)))  # for debug only
@@ -112,6 +111,12 @@ dataset = dataset.rename_columns({_clean_model_name(k): f"rep{i}" for i, k in en
 
 # get collated dataset
 def _collate(features):
+    if len(models) == 1: # if only 1 representation
+        r1 = torch.tensor(features['rep1']).squeeze()
+        r1, _ = torch.max(r1, dim=0) # torch.max returns a tuple
+        features["input_values"] = r1
+        return features
+
     r1 = torch.tensor(features['rep1']).squeeze()
     r1, _ = torch.max(r1, dim=0) # torch.max returns a tuple
     r2 = torch.tensor(features['rep2']).squeeze()
@@ -123,9 +128,12 @@ def _collate(features):
 dataset = dataset.map(
     function=_collate,
     desc="Collating dataset",
-    remove_columns=["rep1", "rep2"],
     cache_file_name=os.path.join(cache_dir, f"{helper_name}/iemocap_collated.arrow")
 )
+
+dataset = dataset.remove_columns(["rep1"])
+if len(models) > 1:
+    dataset = dataset.remove_columns(["rep2"])
 
 # leave-one-speaker-out cross-validation
 splits = utils.get_cv_splits(dataset, n_cv_groups=n_cv_groups)
@@ -155,6 +163,7 @@ for train_index, test_index in tqdm(splits):
         svm = SVC(kernel='linear', C=1.0)
         svm.fit(X_train, y_train)
 
-        wandb.log({m: metric(svm.predict(X_test), y_test) for m, metric in metrics.items()})
+        preds = svm.predict(X_test)
+        wandb.log({f"eval/{m}": metric(preds, y_test) for m, metric in metrics.items()})
 
         gc.collect()
